@@ -1,6 +1,6 @@
 
 using Pkg
-Pkg.activate("C:\\Users\\zachl\\OneDrive\\BU_YEAR1\\Research\\Tudor_Data\\Disengagement_Analysis_2025")
+Pkg.activate("C:\\Research\\Encoder_Modeling\\Encoder_Analysis")
 
 using Random
 using StateSpaceDynamics
@@ -13,8 +13,8 @@ using LinearAlgebra
 using MultivariateStats
 
 using Dates
-include("C:\\Users\\zachl\\OneDrive\\BU_YEAR1\\Research\\Tudor_Data\\Disengagement_Analysis_2025\\HMM_GLM_Fitting\\zutils.jl")
-using StatsPlots
+include("C:\\Research\\Encoder_Modeling\\Encoder_Analysis\\Julia\\Zutils.jl")
+# using StatsPlots
 
 # For testing and debugging
 Random.seed!(1234);
@@ -22,17 +22,21 @@ Random.seed!(1234);
 const SSD = StateSpaceDynamics
 
 # p = "C:\\Users\\zachl\\OneDrive\\BU_YEAR1\\Research\\Tudor_Data\\Disengagement_Analysis_2025\\preprocessed_data\\TD13d_2024-11-13\\";  # Probe 2
-path = "C:\\Users\\zachl\\OneDrive\\BU_YEAR1\\Research\\Tudor_Data\\Disengagement_Analysis_2025\\Processed_Encoder\\TD13d_2024-11-12\\";  # Probe 1
+path = "C:\\Research\\Encoder_Modeling\\Encoder_Analysis\\Processed_Encoder\\TD13d_2024-11-12\\";  # Probe 1
 
-Neural_R4_path = path*"Probe1_R4.csv"
-Neural_R1_path = path*"Probe1_R1.csv"
-SVD_R4_path = path*"R4_Features.csv"
-SVD_R1_path = path*"R1_Features.csv"
+Probe1_R1, Probe2_R1, PCA_P1_R1, PCA_P2_R1, SVD_R1, KP_R1 = load_data_encoder(path, "R1");
+Probe1_R4, Probe2_R4, PCA_P1_R4, PCA_P2_R4, SVD_R4, KP_R4 = load_data_encoder(path, "R4");
 
-R4_Neural = Matrix(CSV.read(Neural_R4_path, DataFrame, header=false))
-R1_Neural = Matrix(CSV.read(Neural_R1_path, DataFrame, header=false))
-SVD_R4 = Matrix(CSV.read(SVD_R4_path, DataFrame, header=false))
-SVD_R1 = Matrix(CSV.read(SVD_R1_path, DataFrame, header=false))
+
+
+
+
+
+
+
+
+
+
 
 # Downsample SVD data by taking every 2nd row
 SVD_R4_downsampled = SVD_R4[1:2:end, :]

@@ -10,8 +10,6 @@ using StateSpaceDynamics
 using Optim
 using Statistics
 const SSD = StateSpaceDynamics
-
-
 using Random
 
 
@@ -416,6 +414,48 @@ function compute_param_diffs(Σ_storage, π_storage, A_storage, β_storage)
     return sigma_changes, pi_changes, A_changes, overall_changes, β_changes
 end
 
+function load_data_encoder(path, cond)
+    # Helper function to chunk matrix into 600-timepoint segments
+    function chunk_matrix(mat, chunk_size)
+        num_chunks = size(mat, 1) ÷ chunk_size
+        [mat[(i-1)*chunk_size + 1 : i*chunk_size, :] for i in 1:num_chunks]
+    end
+
+    # Construct file paths
+    probe1_path = path * "Probe1_" * cond * "_Uncut.csv"
+    probe2_path = path * "Probe2_" * cond * "_Uncut.csv"
+
+    PCA_P1_path = path * "PCA_Probe1_" * cond * "_Uncut.csv"
+    PCA_P2_path = path * "PCA_Probe2_" * cond * "_Uncut.csv"
+
+    SVD_path = path * "SVD_Feats_" * cond * "_Uncut.csv"
+    KP_path = path * "Keypoint_Feats_" * cond * "_Uncut.csv"
+
+    # Load the data into matrices
+    probe1_mat = Matrix(CSV.read(probe1_path, DataFrame; header=false))
+    probe2_mat = Matrix(CSV.read(probe2_path, DataFrame; header=false))
+
+    PCA_P1_mat = Matrix(CSV.read(PCA_P1_path, DataFrame; header=false))
+    PCA_P2_mat = Matrix(CSV.read(PCA_P2_path, DataFrame; header=false))
+
+    SVD_mat = Matrix(CSV.read(SVD_path, DataFrame; header=false))
+    KP_mat = Matrix(CSV.read(KP_path, DataFrame; header=false))
+
+    # Chunk size
+    chunk_size = 600
+
+    # Chunk all matrices
+    probe1_chunks = chunk_matrix(probe1_mat, chunk_size)
+    probe2_chunks = chunk_matrix(probe2_mat, chunk_size)
+
+    PCA_P1_chunks = chunk_matrix(PCA_P1_mat, chunk_size)
+    PCA_P2_chunks = chunk_matrix(PCA_P2_mat, chunk_size)
+
+    SVD_chunks = chunk_matrix(SVD_mat, chunk_size)
+    KP_chunks = chunk_matrix(KP_mat, chunk_size)
+
+    return probe1_chunks, probe2_chunks, PCA_P1_chunks, PCA_P2_chunks, SVD_chunks, KP_chunks
+end
 
 function load_data(path, cond, TW)
     
@@ -467,7 +507,6 @@ function load_data(path, cond, TW)
     lastL = Vector(lastL_df[1, :])
     firstL = Vector(firstL_df[1, :])
     
-    
     # Adjust licks to sampling rate from MATLAB code
     firstL_adjusted = round.(Int, firstL .* 100)
     trial_lengths = lastL  # round.(Int, lastL .* 100);
@@ -485,7 +524,6 @@ function load_data(path, cond, TW)
     # Start slicing and populating the data
     start_idx = 1
 
-
     for i in 1:length(lastL)
         start_idx = (i-1)*600 + 1
         end_idx = start_idx + lastL[i] - 1
@@ -494,8 +532,6 @@ function load_data(path, cond, TW)
         Jaw_Y[i] = Jaw_feat_trial
 
     end
-
-
 
     start_idx = 1
     for i in 1:length(lastL)

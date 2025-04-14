@@ -3,6 +3,11 @@
 % March 2025
 % Cleaning up preprocessing file for MC engagement analysis
 
+
+%% -- CHECK THESE ASPECTS BEFORE RUNNING -- %%
+resp = input("Did you check that the files in loadTD line up with SVD files?");
+
+
 %% Finding "Kinematic Modes"
 clear,clc
 
@@ -79,8 +84,6 @@ folderPath = 'C:\Research\Encoder_Modeling\Encoder_Analysis\Data\video_data\TD13
 
 
 %% Import the Facemap object and extract SVD features
-% load('C:\Research\Encoder_Modeling\Video_Features\TD13d\2024-11-12\SVD_Features_Cam0_TD13d_2024_11_12.mat');
-
 % Load facemap processed files
 SVD_feats_cam0_struct = load('C:\Research\Encoder_Modeling\Encoder_Analysis\Data\SVD_features\FaceMap_Processed\Cam0_TD13d_2024-11-12_cam_0_date_2024_11_12_time_17_49_00_v001_proc.mat');
 % SVD_feats_cam1_struct = load('C:\Research\Encoder_Modeling\Encoder_Analysis\Data\SVD_features\FaceMap_Processed\Cam1_TD13d_2024-11-12_cam_1_date_2024_11_12_time_17_49_00_v001_proc.mat');
@@ -399,16 +402,16 @@ csvwrite(fullfile(outputFolder, "Probe2_R1_Cut.csv"), probe2_R1_Cut);
 csvwrite(fullfile(outputFolder, "Probe2_R4_Cut.csv"), probe2_R4_Cut);
 
 % Save Neural PCs
-csvwrite(fullfile(outputFolder, "Probe1_R1_Uncut.csv"), Probe1_PCs_R1_Uncut);
-csvwrite(fullfile(outputFolder, "Probe1_R4_Uncut.csv"), Probe1_PCs_R4_Uncut);
-csvwrite(fullfile(outputFolder, "Probe1_R1_Cut.csv"), Probe1_PCs_R1_Cut);
-csvwrite(fullfile(outputFolder, "Probe1_R4_Cut.csv"), Probe1_PCs_R4_Cut);
+csvwrite(fullfile(outputFolder, "PCA_Probe1_R1_Uncut.csv"), Probe1_PCs_R1_Uncut);
+csvwrite(fullfile(outputFolder, "PCA_Probe1_R4_Uncut.csv"), Probe1_PCs_R4_Uncut);
+csvwrite(fullfile(outputFolder, "PCA_Probe1_R1_Cut.csv"), Probe1_PCs_R1_Cut);
+csvwrite(fullfile(outputFolder, "PCA_Probe1_R4_Cut.csv"), Probe1_PCs_R4_Cut);
 
 
-csvwrite(fullfile(outputFolder, "Probe2_R1_Uncut.csv"), Probe2_PCs_R1_Uncut);
-csvwrite(fullfile(outputFolder, "Probe2_R4_Uncut.csv"), Probe2_PCs_R4_Uncut);
-csvwrite(fullfile(outputFolder, "Probe2_R1_Cut.csv"), Probe2_PCs_R1_Cut);
-csvwrite(fullfile(outputFolder, "Probe2_R4_Cut.csv"), Probe2_PCs_R4_Cut);
+csvwrite(fullfile(outputFolder, "PCA_Probe2_R1_Uncut.csv"), Probe2_PCs_R1_Uncut);
+csvwrite(fullfile(outputFolder, "PCA_Probe2_R4_Uncut.csv"), Probe2_PCs_R4_Uncut);
+csvwrite(fullfile(outputFolder, "PCA_Probe2_R1_Cut.csv"), Probe2_PCs_R1_Cut);
+csvwrite(fullfile(outputFolder, "PCA_Probe2_R4_Cut.csv"), Probe2_PCs_R4_Cut);
 
 % Save Tongue Length for visualizations
 csvwrite(fullfile(outputFolder, "Tongue_R1.csv"), R1_Tongue_Uncut);
