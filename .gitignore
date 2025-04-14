@@ -1,5 +1,9 @@
-# Ignore all data files
+# Ignore all data files and processed data
 Data/
+Processed_Encoder/
 
 # Ignore Economo Lab Preprocessing files
 Economo-Lab-Preprocessing/
+
+# Ignore autosave MATLAB files
+**.asv
