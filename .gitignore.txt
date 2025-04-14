@@ -1,0 +1,5 @@
+# Ignore all data files
+Data/
+
+# Ignore Economo Lab Preprocessing files
+Economo-Lab-Preprocessing/
