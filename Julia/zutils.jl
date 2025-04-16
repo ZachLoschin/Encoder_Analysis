@@ -218,13 +218,15 @@ function fit_and_evaluate_dis(X_r1, X_r4, Y_r1, Y_r4, LRCs, λ_values, save_fold
 end
 
 
-function fit_and_evaluate(X_r1, X_r4, Y_r1, Y_r4, FCs, λ_values, save_folder::String)
-    # Check if the save folder exists, if not, create it
+function fit_and_evaluate(
+    X_r1, X_r4, Y_r1, Y_r4,
+    FCs, LRCs, λ_values,
+    save_folder::String;
+)
     if !isdir(save_folder)
         mkdir(save_folder)
     end
 
-    # Chop to GC-to-FC time and kernelize all R1 and R4 data
     lags = 4
     function preprocess(X, Y, FCs)
         X_cut = Vector{Matrix{Float64}}(undef, length(X))
@@ -239,74 +241,181 @@ function fit_and_evaluate(X_r1, X_r4, Y_r1, Y_r4, FCs, λ_values, save_folder::S
         return X_ready, Y_ready
     end
 
+    # Standard FC cuts
     X_r1_ready, Y_r1_ready = preprocess(X_r1, Y_r1, FCs[1:length(X_r1)])
     X_r4_ready, Y_r4_ready = preprocess(X_r4, Y_r4, FCs[length(X_r1)+1:end])
 
-    # Stratified train/val/test split
+    # Train/val/test split
     X_train, Y_train, X_val, Y_val, X_test, Y_test = stratified_train_val_test_split(
-        X_r1_ready, Y_r1_ready, X_r4_ready, Y_r4_ready)
+        X_r1_ready, Y_r1_ready, X_r4_ready, Y_r4_ready
+    )
 
-    # Prepare data for training and validation
+    # Concatenate data
     X_train_cat = vcat(X_train...)
     y_train_cat = vcat(Y_train...)
     X_test_cat = vcat(X_test...)
     y_test_cat = vcat(Y_test...)
     x_val_cat = vcat(X_val...)
     y_val_cat = vcat(Y_val...)
+
     X_val_with_intercept = hcat(ones(size(x_val_cat, 1)), x_val_cat)
 
-    # Initialize results list
-    results = []  
+    results = []
 
     for λ in λ_values
         println("Evaluating λ: ", λ)
 
-        # Initialize and fit the model
-        encoder_model = SSD.GaussianRegressionEmission(
+        model = SSD.GaussianRegressionEmission(
             input_dim = size(X_train[1], 2),
             output_dim = size(Y_train[1], 2),
             include_intercept = true,
             λ = λ
         )
-        SSD.fit!(encoder_model, X_train_cat, y_train_cat)
+        SSD.fit!(model, X_train_cat, y_train_cat)
 
-        # Predict on validation set
-        y_val_pred = X_val_with_intercept * encoder_model.β
+        y_val_pred = X_val_with_intercept * model.β
         r2_val = r2_score(y_val_cat, y_val_pred)
 
-        # Predict on training set
         x_train_with_intercept = hcat(ones(size(X_train_cat, 1)), X_train_cat)
-        y_train_pred = x_train_with_intercept * encoder_model.β
+        y_train_pred = x_train_with_intercept * model.β
         r2_train = r2_score(y_train_cat, y_train_pred)
 
-        # Store result
-        push!(results, (λ = λ, r2_train = r2_train, r2_val = r2_val, β = copy(encoder_model.β)))
+        push!(results, (λ = λ, r2_train = r2_train, r2_val = r2_val, β = copy(model.β)))
     end
 
-    # Pick best λ and set up best model
-    r2_values = [result.r2_val for result in results]
-    best_index = argmax(r2_values)
+    best_index = argmax([r.r2_val for r in results])
     best_beta = results[best_index].β
     best_lambda = results[best_index].λ
 
-    best_encoder_model = SSD.GaussianRegressionEmission(
+    best_model = SSD.GaussianRegressionEmission(
         input_dim = size(X_train[1], 2),
         output_dim = size(Y_train[1], 2),
         include_intercept = true,
         λ = best_lambda
     )
-    best_encoder_model.β .= best_beta
+    best_model.β .= best_beta
 
-    # Predict and evaluate on test set
+    # Evaluate on test set
     x_test_with_intercept = hcat(ones(size(X_test_cat, 1)), X_test_cat)
-    y_test_pred = x_test_with_intercept * best_encoder_model.β
+    y_test_pred = x_test_with_intercept * best_model.β
     r2_test = r2_score(y_test_cat, y_test_pred)
-
     println("R² on test set: ", r2_test)
 
-    # Save results
-    save_results_to_csv(results, best_index, best_lambda, best_beta, r2_test, save_folder)
+    # Optional: evaluate on full cut
+    r2_fullcut = missing
+    if LRCs !== nothing
+        X_r1_LRC, Y_r1_LRC = preprocess(X_r1, Y_r1, LRCs[1:length(X_r1)])
+        X_r4_LRC, Y_r4_LRC = preprocess(X_r4, Y_r4, LRCs[length(X_r1)+1:end])
+
+        X_fullcut = vcat(X_r1_LRC..., X_r4_LRC...)
+        Y_fullcut = vcat(Y_r1_LRC..., Y_r4_LRC...)
+
+        x_full_with_intercept = hcat(ones(size(X_fullcut, 1)), X_fullcut)
+        y_full_pred = x_full_with_intercept * best_model.β
+        r2_fullcut = r2_score(Y_fullcut, y_full_pred)
+
+        println("R² on full-cut (97:LRC) data: ", r2_fullcut)
+    end
+
+    save_results_to_csv(
+        results, best_index, best_lambda, best_beta,
+        r2_test, r2_fullcut, save_folder
+    )
+
+    return best_model, r2_test, r2_fullcut
 end
+
+
+
+# function fit_and_evaluate(X_r1, X_r4, Y_r1, Y_r4, FCs, λ_values, save_folder::String)
+#     # Check if the save folder exists, if not, create it
+#     if !isdir(save_folder)
+#         mkdir(save_folder)
+#     end
+
+#     # Chop to GC-to-FC time and kernelize all R1 and R4 data
+#     lags = 4
+#     function preprocess(X, Y, FCs)
+#         X_cut = Vector{Matrix{Float64}}(undef, length(X))
+#         Y_cut = Vector{Matrix{Float64}}(undef, length(Y))
+#         for i in 1:length(X)
+#             len = FCs[i]
+#             X_cut[i] = X[i][97:len, :]
+#             Y_cut[i] = Y[i][97:len, :]
+#         end
+#         X_ready = kernelize_past_features(X_cut, lags)
+#         Y_ready = trim_Y_train_past(Y_cut, lags)
+#         return X_ready, Y_ready
+#     end
+
+#     X_r1_ready, Y_r1_ready = preprocess(X_r1, Y_r1, FCs[1:length(X_r1)])
+#     X_r4_ready, Y_r4_ready = preprocess(X_r4, Y_r4, FCs[length(X_r1)+1:end])
+
+#     # Stratified train/val/test split
+#     X_train, Y_train, X_val, Y_val, X_test, Y_test = stratified_train_val_test_split(
+#         X_r1_ready, Y_r1_ready, X_r4_ready, Y_r4_ready)
+
+#     # Prepare data for training and validation
+#     X_train_cat = vcat(X_train...)
+#     y_train_cat = vcat(Y_train...)
+#     X_test_cat = vcat(X_test...)
+#     y_test_cat = vcat(Y_test...)
+#     x_val_cat = vcat(X_val...)
+#     y_val_cat = vcat(Y_val...)
+#     X_val_with_intercept = hcat(ones(size(x_val_cat, 1)), x_val_cat)
+
+#     # Initialize results list
+#     results = []  
+
+#     for λ in λ_values
+#         println("Evaluating λ: ", λ)
+
+#         # Initialize and fit the model
+#         encoder_model = SSD.GaussianRegressionEmission(
+#             input_dim = size(X_train[1], 2),
+#             output_dim = size(Y_train[1], 2),
+#             include_intercept = true,
+#             λ = λ
+#         )
+#         SSD.fit!(encoder_model, X_train_cat, y_train_cat)
+
+#         # Predict on validation set
+#         y_val_pred = X_val_with_intercept * encoder_model.β
+#         r2_val = r2_score(y_val_cat, y_val_pred)
+
+#         # Predict on training set
+#         x_train_with_intercept = hcat(ones(size(X_train_cat, 1)), X_train_cat)
+#         y_train_pred = x_train_with_intercept * encoder_model.β
+#         r2_train = r2_score(y_train_cat, y_train_pred)
+
+#         # Store result
+#         push!(results, (λ = λ, r2_train = r2_train, r2_val = r2_val, β = copy(encoder_model.β)))
+#     end
+
+#     # Pick best λ and set up best model
+#     r2_values = [result.r2_val for result in results]
+#     best_index = argmax(r2_values)
+#     best_beta = results[best_index].β
+#     best_lambda = results[best_index].λ
+
+#     best_encoder_model = SSD.GaussianRegressionEmission(
+#         input_dim = size(X_train[1], 2),
+#         output_dim = size(Y_train[1], 2),
+#         include_intercept = true,
+#         λ = best_lambda
+#     )
+#     best_encoder_model.β .= best_beta
+
+#     # Predict and evaluate on test set
+#     x_test_with_intercept = hcat(ones(size(X_test_cat, 1)), X_test_cat)
+#     y_test_pred = x_test_with_intercept * best_encoder_model.β
+#     r2_test = r2_score(y_test_cat, y_test_pred)
+
+#     println("R² on test set: ", r2_test)
+
+#     # Save results
+#     save_results_to_csv(results, best_index, best_lambda, best_beta, r2_test, save_folder)
+# end
 
 
 function r2_score(y_true, y_pred)
@@ -314,44 +423,41 @@ function r2_score(y_true, y_pred)
     ss_tot = sum((y_true .- mean(y_true, dims=1)).^2)
     return 1 - (ss_res / ss_tot)
 end
-
 function load_results_from_csv(folder_path::String)
     # Load the validation results
     validation_file = joinpath(folder_path, "validation_results.csv")
     validation_df = CSV.read(validation_file, DataFrame)
     println("Loaded validation results from $validation_file")
 
-    # Load the best validation results (lambda and R²s)
+    # Load the best validation/test results
     best_results_file = joinpath(folder_path, "best_validation_results.csv")
     best_results_df = CSV.read(best_results_file, DataFrame)
-    best_lambda = best_results_df.Best_Lambda[1]                # Best lambda
-    best_r2_train = best_results_df.R2_Train_Best[1]            # Best training R²
-    best_r2_val = best_results_df.R2_Validation_Best[1]         # Best validation R²
-    best_r2_test = best_results_df.R2_Test_Best[1]              # Best test R²
-    println("Loaded best validation and test results from $best_results_file")
+    best_lambda = best_results_df.Best_Lambda[1]
+    best_r2_train = best_results_df.R2_Train_Best[1]
+    best_r2_val = best_results_df.R2_Validation_Best[1]
+    best_r2_test = best_results_df.R2_Test_Best[1]
+    best_r2_fullcut = best_results_df.R2_FullCut_Best[1]
+    println("Loaded best lambda and performance metrics from $best_results_file")
 
-    # Load the best betas and reshape them based on saved shape
+    # Load the best betas and reshape them
     best_betas_file = joinpath(folder_path, "best_betas.csv")
     best_betas_df = CSV.read(best_betas_file, DataFrame)
-    
-    # Extract the flattened betas and the shape information
+
+    # Assumes flattened_betas, rows, and cols columns exist
     flattened_betas = best_betas_df.flattened_betas
     rows = best_betas_df.rows[1]
     cols = best_betas_df.cols[1]
+    best_beta = reshape(collect(flattened_betas), rows, cols)
+    println("Loaded and reshaped best β from $best_betas_file")
 
-    # Reshape the flattened betas to their original dimensions
-    best_beta = reshape(flattened_betas, rows, cols)
-    println("Loaded and reshaped best betas from $best_betas_file")
-
-    # Return all relevant results
-    return validation_df, best_lambda, best_r2_train, best_r2_val, best_r2_test, best_beta
+    return validation_df, best_lambda, best_r2_train, best_r2_val, best_r2_test, best_r2_fullcut, best_beta
 end
 
 
 function stratified_train_val_test_split(X_r1, y_r1, X_r4, y_r4;
     train_ratio=0.7,
     val_ratio=0.15,
-    seed=10)
+    seed=11)
 
     Random.seed!(seed)
 
@@ -387,9 +493,15 @@ function stratified_train_val_test_split(X_r1, y_r1, X_r4, y_r4;
 end
 
 
-
-
-function save_results_to_csv(results, best_index, best_lambda, best_beta, r2_test, folder_path::String)
+function save_results_to_csv(
+    results, 
+    best_index, 
+    best_lambda, 
+    best_beta, 
+    r2_test, 
+    r2_fullcut,  # NEW ARGUMENT
+    folder_path::String
+)
     # Check if the folder exists; if not, create it
     if !isdir(folder_path)
         mkpath(folder_path)
@@ -412,7 +524,8 @@ function save_results_to_csv(results, best_index, best_lambda, best_beta, r2_tes
         Best_Lambda = [best_lambda],
         R2_Train_Best = [results[best_index].r2_train],
         R2_Validation_Best = [results[best_index].r2_val],
-        R2_Test_Best = [r2_test]
+        R2_Test_Best = [r2_test],
+        R2_Fullcut = [r2_fullcut]  # NEW FIELD
     )
 
     # Save the best lambda results to a CSV file
@@ -436,7 +549,6 @@ function save_results_to_csv(results, best_index, best_lambda, best_beta, r2_tes
     CSV.write(best_betas_file, best_betas_df)
     println("Best betas saved to $best_betas_file")
 end
-
 
 
 # Helper function to split matrix into chunks
