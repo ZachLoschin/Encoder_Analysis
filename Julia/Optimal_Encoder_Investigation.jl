@@ -21,164 +21,277 @@ Random.seed!(1234);
 
 const SSD = StateSpaceDynamics
 
-# p = "C:\\Users\\zachl\\OneDrive\\BU_YEAR1\\Research\\Tudor_Data\\Disengagement_Analysis_2025\\preprocessed_data\\TD13d_2024-11-13\\";  # Probe 2
+# path = "C:\\Users\\zachl\\OneDrive\\BU_YEAR1\\Research\\Tudor_Data\\Disengagement_Analysis_2025\\preprocessed_data\\TD13d_2024-11-13\\";  # Probe 2
 path = "C:\\Research\\Encoder_Modeling\\Encoder_Analysis\\Processed_Encoder\\TD13d_2024-11-12\\";  # Probe 1
 
 Probe1_R1, Probe2_R1, PCA_P1_R1, PCA_P2_R1, SVD_R1, KP_R1 = load_data_encoder(path, "R1");
 Probe1_R4, Probe2_R4, PCA_P1_R4, PCA_P2_R4, SVD_R4, KP_R4 = load_data_encoder(path, "R4");
 
+Probe1_R1_Cut, Probe2_R1_Cut, PCA_P1_R1_Cut, PCA_P2_R1_Cut, SVD_R1_Cut, KP_R1_Cut, FCs_R1, LRCs_R1, Tongue_mat_R1  = load_data_encoder_cut(path, "R1");
+Probe1_R4_Cut, Probe2_R4_Cut, PCA_P1_R4_Cut, PCA_P2_R4_Cut, SVD_R4_Cut, KP_R4_Cut, FCs_R4, LRCs_R4, Tongue_mat_R4  = load_data_encoder_cut(path, "R4");
 
 
 
+"""
+Visualizations to sanity check data preprocessing and import
+"""
+
+# Check uncut neural data and features
+P1_R1_Ave = ave_vector(Probe1_R1)
+P1_R4_Ave = ave_vector(Probe1_R4)
+plot(P1_R1_Ave, label="R1 Uncut Ave")
+plot!(P1_R4_Ave, label="R4 Uncut Ave")
+title!("Uncut Population Average")
+
+# Stack trials into a 3D array: 600 (time) x 12 (PCs) x N_trials
+PCA_P1_R1_Ave = average_PCs(PCA_P1_R1)
+plot(PCA_P1_R1_Ave)
+title!("R1 Neural PCs")
+
+PCA_P1_R4_Ave = average_PCs(PCA_P1_R4)
+plot(PCA_P1_R4_Ave)
+title!("R4 Neural PCs")
+
+# Check the SVD features
+SVD_R1_Ave = average_PCs(SVD_R1)
+plot(SVD_R1_Ave[:,1:5])
+title!("R1 Motion SVDs")
+plot(SVD_R1_Ave[:,51:55])
+title!("R1 Movie SVDs")
+
+SVD_R4_Ave = average_PCs(SVD_R4)
+plot(SVD_R4_Ave[:,1:5])
+title!("R4 Motion SVDs")
+plot(SVD_R4_Ave[:,51:55])
+title!("R4 Movie SVDs")
 
 
 
+"""
+Section for testing SVD features to nerual FRs
+"""
 
+SVD_R1_selected = [hcat(x[:, 1:20], x[:, 51:70]) for x in SVD_R1]
+SVD_R4_selected = [hcat(x[:, 1:20], x[:, 51:70]) for x in SVD_R4]
 
+X = cat(SVD_R1_selected, SVD_R4_selected, dims=1)
+Y = cat(Probe1_R1, Probe1_R4, dims=1)
+FCs = cat(FCs_R1, FCs_R4, dims=2)
+λ_values = [0.0001, 0.001, 0.01, 0.1, 0.0, 1.0, 10.0, 100.0, 1000.0, 10000.0, 100000.0, 1000000.0, 10000000.0]
+fit_and_evaluate(SVD_R1_selected, SVD_R4_selected, Probe1_R1, Probe1_R4, FCs, λ_values, "Results\\TD13d_11_12\\SVD_To_Neural_FRs")
 
+"""
+Section for testing SVD features to nerual PCs
+"""
 
+X = cat(SVD_R1, SVD_R4, dims=1)
+Y = cat(PCA_P1_R1, PCA_P1_R4, dims=1)
+fit_and_evaluate(SVD_R1_selected, SVD_R4_selected, PCA_P1_R1, PCA_P1_R4 , FCs, λ_values, "Results\\TD13d_11_12\\SVD_To_Neural_PCs")
 
-# Downsample SVD data by taking every 2nd row
-SVD_R4_downsampled = SVD_R4[1:2:end, :]
-SVD_R1_downsampled = SVD_R1[1:2:end, :]
+"""
+Section for testing KP Features to nerual FRs
+"""
 
-# Split neural data (1200 points per trial)
-R4_Neural_trials = split_into_trials(R4_Neural, 1200)
-R1_Neural_trials = split_into_trials(R1_Neural, 1200)
+# Assuming KP_R1 is a vector of matrices
+for i in 1:length(KP_R1)
+    # Replace NaN values in each matrix with 0
+    KP_R1[i] .= replace(KP_R1[i], NaN => 0.0)
+end
 
-# Split SVD features (1200 points per trial since downsampled)
-SVD_R4_trials = split_into_trials(SVD_R4_downsampled, 1200)
-SVD_R1_trials = split_into_trials(SVD_R1_downsampled, 1200)
-
-# Compute the mean neural activity over timepoints for each trial
-R4_Neural_avg = [mean(trial; dims=1) for trial in R4_Neural_trials]
-R1_Neural_avg = [mean(trial; dims=1) for trial in R1_Neural_trials]
-
-r4mean = [mean(r, dims=2) for r in R4_Neural_trials];
-r1mean = [mean(r, dims=2) for r in R1_Neural_trials];
-r1 = mean(hcat(r1mean...), dims=2)
-r4 = mean(hcat(r4mean...), dims=2)
-
-# Combined datasets for each trial
-X = cat(SVD_R4_trials, SVD_R1_trials, dims=1)
-Y = cat(R4_Neural_trials, R1_Neural_trials, dims=1)
-
-X_chopped = [x[401:1000, :] for x in X];
-Y_chopped = [y[401:1000, :] for y in Y];
-# Assume you already have X_chopped and Y_chopped (your full data)
-
-# Split data into train and temp
-X_train, Y_train, X_temp, Y_temp = train_test_split(X_chopped, Y_chopped, 0.8)
-
-
-# split temp to val and test
-X_val, Y_val, X_test, Y_test = train_test_split(X_temp, Y_temp, 0.5)
-
-
-# Kernelize and trim
-X_train = kernelize_past_features(X_train)
-Y_train = trim_Y_train_past(Y_train)
-
-X_val = kernelize_past_features(X_val)
-Y_val = trim_Y_train_past(Y_val)
-
-X_test = kernelize_past_features(X_test)
-Y_test = trim_Y_train_past(Y_test)
-
-x_test = vcat(X_test...)
-y_test = vcat(Y_test...)
-
-# Prepare data
-x_train = vcat(X_train...)
-y_train = vcat(Y_train...)
-
-x_val = vcat(X_val...)
-y_val = vcat(Y_val...)
-
-x_val_with_intercept = hcat(ones(size(x_val, 1)), x_val)
-
-# Sweep over λ values
-λ_values = [0.0001, 0.01, 0.1, 0.0, 0.1, 1, 10, 100, 1000, 10000]
-results = []
-
-
-encoder_model = SSD.GaussianRegressionEmission(
-    input_dim = 100,
-    output_dim = 46,
-    include_intercept = false,
-    λ = 1.0
-)
-
-SSD.fit!(encoder_model, x_train, y_train)
-
-x_test_with_intercept = hcat(ones(size(x_test, 1)), x_test)
-y_test_pred = x_test_with_intercept * encoder_model.β
-
-r2_test = r2_score(y_test, y_test_pred)
-
-
-model = SwitchingGaussianRegression(;K=2, input_dim=100, output_dim=46, include_intercept=false)
-model.B[1] = encoder_model
-model.A = [0.999 0.001; 0.001 0.999];
-model.πₖ = [0.99; 0.01;]
-
-XX = permutedims.(X_train);
-YY = permutedims.(Y_train);
-
-lls = fit_switching_encoder!(model, YY, XX; max_iters=100)
-
-
-
-
-
-# for λ in λ_values
-#     println("Evaluating λ: ", λ)
-#     # Initialize the model
-#     encoder_model = SSD.GaussianRegressionEmission(
-#         input_dim = size(X_train[1])[2],
-#         output_dim = size(Y_train[1])[2],
-#         include_intercept = true,
-#         λ = λ
-#     )
-    
-#     # Fit the model
-#     SSD.fit!(encoder_model, x_train, y_train)
-    
-#     # Predict on validation set
-#     y_val_pred = x_val_with_intercept * encoder_model.β
-    
-#     # Compute R²
-#     r2_val = r2_score(y_val, y_val_pred)
-    
-#     # Save the result: store λ, r2, and model parameters
-#     push!(results, (λ=λ, r2=r2_val, β=copy(encoder_model.β)))
-# end
-
-# Results is now a vector of NamedTuples containing λ, r², and the β coefficients
-r2_values = [result.r2 for result in results]
-best_index = argmax(r2_values)
-best_beta = results[best_index].β
-best_lambda = results[best_index].λ
-
-best_encoder_model = SSD.GaussianRegressionEmission(
-        input_dim = size(X_train[1])[2],
-        output_dim = size(Y_train[1])[2],
-        include_intercept = true,
-        λ = best_lambda
-    )
-
-best_encoder_model.β .= best_beta
-
-x_test_with_intercept = hcat(ones(size(x_test, 1)), x_test)
-y_test_pred = x_test_with_intercept * best_beta
-
-r2_test = r2_score(y_test, y_test_pred)
-
-
-function r2_score(y_true, y_pred)
-    ss_res = sum((y_true .- y_pred).^2)
-    ss_tot = sum((y_true .- mean(y_true)).^2)
-    return 1 - (ss_res / ss_tot)
+for i in 1:length(KP_R4)
+    # Replace NaN values in each matrix with 0
+    KP_R4[i] .= replace(KP_R4[i], NaN => 0.0)
 end
 
 
+X = cat(KP_R1, KP_R4, dims=1)
+Y = cat(Probe1_R1, Probe1_R4, dims=1)
+fit_and_evaluate(KP_R1, KP_R4, Probe1_R1, Probe1_R4, FCs, λ_values, "Results\\TD13d_11_12\\KP_To_Neural_FRs")
+
+
+"""
+Section for testing KP Features to nerual PCs
+"""
+
+X = cat(KP_R1, KP_R4, dims=1)
+Y = cat(PCA_P1_R1, PCA_P1_R4, dims=1)
+fit_and_evaluate(KP_R1, KP_R4, PCA_P1_R1, PCA_P1_R4, FCs, λ_values, "Results\\TD13d_11_12\\KP_To_Neural_PCs")
+
+
+"""
+********************************* Sliding Window R2 Results SVD -> FRs
+"""
+results_folder = "Results/TD13d_11_12/SVD_To_Neural_FRs"
+R1_mean, R1_std = sliding_window_r2(SVD_R1_selected, Probe1_R1, results_folder, "R1")
+R4_mean, R4_std = sliding_window_r2(SVD_R4_selected, Probe1_R4, results_folder, "R4")
+
+p = plot_sliding_window_r2(R1_mean, R1_std, R4_mean, R4_std)
+savefig(p, joinpath(results_folder, "Sliding_Window_R2.png"))
+
+"""
+Sliding Window R2 Results SVD -> PCs
+"""
+results_folder = "Results/TD13d_11_12/SVD_To_Neural_PCs"
+R1_mean, R1_std = sliding_window_r2(SVD_R1_selected, PCA_P1_R1, results_folder, "R1")
+R4_mean, R4_std = sliding_window_r2(SVD_R4_selected, PCA_P1_R4, results_folder, "R4")
+
+p = plot_sliding_window_r2(R1_mean, R1_std, R4_mean, R4_std)
+savefig(p, joinpath(results_folder, "Sliding_Window_R2.png"))
+
+"""
+Sliding Window R2 Results KP-> PCs
+"""
+results_folder = "Results/TD13d_11_12/KP_To_Neural_PCs"
+R1_mean, R1_std = sliding_window_r2(KP_R1, PCA_P1_R1, results_folder, "R1")
+R4_mean, R4_std = sliding_window_r2(KP_R4, PCA_P1_R4, results_folder, "R4")
+
+p = plot_sliding_window_r2(R1_mean, R1_std, R4_mean, R4_std)
+savefig(p, joinpath(results_folder, "Sliding_Window_R2.png"))
+
+"""
+Sliding Window R2 Results KP-> FR
+"""
+results_folder = "Results/TD13d_11_12/KP_To_Neural_FRs"
+R1_mean, R1_std = sliding_window_r2(KP_R1, Probe1_R1, results_folder, "R1")
+R4_mean, R4_std = sliding_window_r2(KP_R4, Probe1_R4, results_folder, "R4")
+
+p = plot_sliding_window_r2(R1_mean, R1_std, R4_mean, R4_std)
+savefig(p, joinpath(results_folder, "Sliding_Window_R2.png"))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# """
+# ******* DISENGAGED ENCODER FITTING BELOW *******
+# """
+
+
+# """
+# Section for testing SVD features to nerual FRs
+# """
+
+# SVD_R1_selected = [hcat(x[:, 1:20], x[:, 51:70]) for x in SVD_R1]
+# SVD_R4_selected = [hcat(x[:, 1:20], x[:, 51:70]) for x in SVD_R4]
+
+# X = cat(SVD_R1_selected, SVD_R4_selected, dims=1)
+# Y = cat(Probe1_R1, Probe1_R4, dims=1)
+# LRCs= cat(LRCs_R1, LRCs_R4, dims=1)
+# λ_values = [0.0001, 0.0, 1000.0]
+# fit_and_evaluate_dis(X, Y, LRCs, λ_values, "Results\\TD13d_11_12\\Dis_SVD_To_Neural_FRs")
+
+
+# results_folder = "Results\\TD13d_11_12\\Dis_SVD_To_Neural_FRs"
+# R1_mean, R1_std = sliding_window_r2(SVD_R1_selected, Probe1_R1, results_folder, "R1")
+# R4_mean, R4_std = sliding_window_r2(SVD_R4_selected, Probe1_R4, results_folder, "R4")
+
+# p = plot_sliding_window_r2(R1_mean, R1_std, R4_mean, R4_std)
+# savefig(p, joinpath(results_folder, "Sliding_Window_R2.png"))
+
+
+# """
+# Section for testing SVD features to nerual FRs
+# """
+# X = cat(SVD_R1_selected, SVD_R4_selected, dims=1)
+# Y = cat(PCA_P1_R1, PCA_P1_R4, dims=1)
+# fit_and_evaluate_dis(X, Y, LRCs, λ_values, "Results\\TD13d_11_12\\Dis_SVD_To_Neural_PCs")
+
+
+
+# results_folder = "Results/TD13d_11_12/Dis_SVD_To_Neural_PCs"
+# R1_mean, R1_std = sliding_window_r2(SVD_R1_selected, PCA_P1_R1, results_folder, "R1")
+# R4_mean, R4_std = sliding_window_r2(SVD_R4_selected, PCA_P1_R4, results_folder, "R4")
+
+# p = plot_sliding_window_r2(R1_mean, R1_std, R4_mean, R4_std)
+# savefig(p, joinpath(results_folder, "Sliding_Window_R2.png"))
+
+
+
+# """
+# Section for testing KP Features to nerual FRs
+# """
+
+# # Assuming KP_R1 is a vector of matrices
+# for i in 1:length(KP_R1)
+#     # Replace NaN values in each matrix with 0
+#     KP_R1[i] .= replace(KP_R1[i], NaN => 0.0)
+# end
+
+# for i in 1:length(KP_R4)
+#     # Replace NaN values in each matrix with 0
+#     KP_R4[i] .= replace(KP_R4[i], NaN => 0.0)
+# end
+
+
+# X = cat(KP_R1, KP_R4, dims=1)
+# Y = cat(Probe1_R1, Probe1_R4, dims=1)
+# fit_and_evaluate_dis(X, Y, LRCs, λ_values, "Results\\TD13d_11_12\\Dis_KP_To_Neural_FRs")
+
+
+
+# """
+# Sliding Window R2 Results KP-> PCs
+# """
+
+# results_folder = "Results/TD13d_11_12/Dis_KP_To_Neural_FRs"
+# R1_mean, R1_std = sliding_window_r2(KP_R1, Probe1_R1, results_folder, "R1")
+# R4_mean, R4_std = sliding_window_r2(KP_R4, Probe1_R4, results_folder, "R4")
+
+# p = plot_sliding_window_r2(R1_mean, R1_std, R4_mean, R4_std)
+# savefig(p, joinpath(results_folder, "Sliding_Window_R2.png"))
+
+
+# """
+# Section for testing KP Features to nerual PCs
+# """
+
+# X = cat(KP_R1, KP_R4, dims=1)
+# Y = cat(PCA_P1_R1, PCA_P1_R4, dims=1)
+# fit_and_evaluate_dis(X, Y, LRCs, λ_values, "Results\\TD13d_11_12\\Dis_KP_To_Neural_PCs")
+
+
+# """
+# Sliding Window R2 Results KP-> FR
+# """
+# results_folder = "Results/TD13d_11_12/Dis_KP_To_Neural_PCs"
+# R1_mean, R1_std = sliding_window_r2(KP_R1, PCA_P1_R1, results_folder, "R1")
+# R4_mean, R4_std = sliding_window_r2(KP_R4, PCA_P1_R4, results_folder, "R4")
+
+# p = plot_sliding_window_r2(R1_mean, R1_std, R4_mean, R4_std)
+# savefig(p, joinpath(results_folder, "Sliding_Window_R2.png"))
+
+
+
+
+
+
+
+
+
+
+# """
+# Testing ground
+# """
+# SVD_R1_selected = [x[:,100] for x in SVD_R1]
+# SVD_R4_selected = [x[:,100] for x in SVD_R4]
+
+# X = cat(SVD_R1_selected, SVD_R4_selected, dims=1)
+
+# num_trials = length(SVD_R1_selected) + length(SVD_R4_selected)
+# X_fake = [randn(600, 1) for _ in 1:num_trials]
+
+
+
+# Y = cat(Probe1_R1, Probe1_R4, dims=1)
+# FCs = cat(FCs_R1, FCs_R4, dims=2)
+# λ_values = [0.0001, 0.0, 1000.0]
+# fit_and_evaluate(X_fake, Y, FCs, λ_values, "Results\\TD13d_11_12\\SVD_To_Neural_FRs")

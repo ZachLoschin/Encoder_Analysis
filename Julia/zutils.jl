@@ -12,6 +12,432 @@ using Statistics
 const SSD = StateSpaceDynamics
 using Random
 
+function plot_sliding_window_r2(R1_mean, R1_std, R4_mean, R4_std; window_size=10)
+    max_points = 400
+    num_windows = div(max_points, window_size)  # 30 windows for 300 points
+
+    # Generate time axis from -1s to 2s
+    time_axis = range(-1, stop=2, length=num_windows)
+
+    # Define custom x-ticks
+    xticks = -1:0.5:3
+
+    p = plot(
+        time_axis, R1_mean[1:num_windows];
+        ribbon=R1_std[1:num_windows],
+        label="R1",
+        lw=2,
+        color=:blue,
+        xlabel="Time (s)",
+        ylabel="R²",
+        title="Sliding Window R² (Mean ± Std)",
+        legend=:topright,
+        fillalpha=0.2,
+        xticks=xticks,
+        ylim=(-2, 1)
+    )
+
+    plot!(
+        time_axis, R4_mean[1:num_windows];
+        ribbon=R4_std[1:num_windows],
+        label="R4",
+        lw=2,
+        color=:red,
+        fillalpha=0.2,
+    )
+
+    return p
+end
+
+function sliding_window_r2(X, Y, results_folder::String, condition::String)
+    # Load best model parameters
+    validation_df, best_lambda, best_train2, best_valr2, best_testr2, best_beta = load_results_from_csv(results_folder)
+
+    # Kernelize and trim data
+    lags = 4
+    X_ready = kernelize_past_features(X, lags)
+    Y_ready = trim_Y_train_past(Y, lags)
+
+    # Setup model with best lambda and beta
+    input_dim = size(X_ready[1], 2)
+    output_dim = size(Y_ready[1], 2)
+    model = SSD.GaussianRegressionEmission(
+        input_dim=input_dim,
+        output_dim=output_dim,
+        include_intercept=true,
+        λ=best_lambda,
+    )
+    model.β .= best_beta
+
+    # Sliding window parameters
+    window_size = 10
+    trial_len = size(X_ready[1], 1)
+    num_windows = fld(trial_len, window_size)
+
+    r2_per_window = Float64[]  # To store mean R² for each window
+    r2_per_window_std = Float64[]  # To store std of R² for each window
+
+    for w in 1:num_windows
+        idx_start = (w - 1) * window_size + 1
+        idx_end = w * window_size
+
+        r2_values_per_trial = Float64[]
+
+        for i in 1:length(X_ready)
+            X_trial = X_ready[i]
+            Y_trial = Y_ready[i]
+
+            # Skip trials that are too short
+            if size(X_trial, 1) < idx_end
+                continue
+            end
+
+            X_win = X_trial[idx_start:idx_end, :]
+            Y_win = Y_trial[idx_start:idx_end, :]
+
+            x_with_intercept = hcat(ones(size(X_win, 1)), X_win)
+            Y_pred = x_with_intercept * model.β
+
+            push!(r2_values_per_trial, r2_score(Y_win, Y_pred))
+        end
+
+        push!(r2_per_window, mean(r2_values_per_trial))
+        push!(r2_per_window_std, std(r2_values_per_trial))
+    end
+
+    # Save results to CSV
+    result_filename = joinpath(results_folder, "$(condition)_Sliding_Window.csv")
+    results_df = DataFrame(Window=1:num_windows, Mean_R2=r2_per_window, Std_R2=r2_per_window_std)
+    CSV.write(result_filename, results_df)
+
+    println("R² results saved to: $result_filename")
+
+    return r2_per_window, r2_per_window_std
+end
+
+
+
+# Define the function to perform the fitting loop
+function fit_and_evaluate_dis(X_r1, X_r4, Y_r1, Y_r4, LRCs, λ_values, save_folder::String)
+    # Check if the save folder exists, if not, create it
+    if !isdir(save_folder)
+        mkdir(save_folder)
+    end
+
+    # Chop the engaged state periods to GC to FC time
+    X_cut = Vector{Matrix{Float64}}(undef, length(X))
+    Y_cut = Vector{Matrix{Float64}}(undef, length(Y))
+
+    for i in 1:length(X)
+        len = LRCs[i]  # get the desired length
+        X_cut[i] = X[i][len-10:len, :]
+        Y_cut[i] = Y[i][len-10:len, :]
+    end
+
+    # Kernelize the X data and chop the Y data
+    lags = 4
+    X_ready = kernelize_past_features(X_cut, lags)
+    Y_ready = trim_Y_train_past(Y_cut, lags)
+
+    # Train / test/ val split
+    X_train, Y_train, X_val, Y_val, X_test, Y_test = stratified_train_val_test_split(X_r1, Y_r1, X_r4, Y_r4)
+    # X_train, Y_train, X_temp, Y_temp = train_test_split(X_ready, Y_ready, 0.8)
+    # X_val, Y_val, X_test, Y_test = train_test_split(X_temp, Y_temp, 0.5)
+
+    # Prepare data for training and validation
+    X_train_cat = vcat(X_train...)
+    y_train_cat = vcat(Y_train...)
+    X_test_cat = vcat(X_test...)
+    y_test_cat = vcat(Y_test...)
+    x_val_cat = vcat(X_val...)
+    y_val_cat = vcat(Y_val...)
+    X_val_with_intercept = hcat(ones(size(x_val_cat, 1)), x_val_cat)  # Add ones to X_val
+
+    # Initialize results list
+    results = []  
+
+    for λ in λ_values
+        println("Evaluating λ: ", λ)
+
+        # Initialize the model
+        encoder_model = SSD.GaussianRegressionEmission(
+            input_dim = size(X_train[1])[2],
+            output_dim = size(Y_train[1])[2],
+            include_intercept = true,
+            λ = λ
+        )
+
+        # Fit the model
+        SSD.fit!(encoder_model, X_train_cat, y_train_cat)
+
+        # Predict on validation set
+        y_val_pred = X_val_with_intercept * encoder_model.β
+
+        # Compute R²
+        r2_val = r2_score(y_val_cat, y_val_pred)
+
+        # Save the result: store λ, r², and model parameters
+        push!(results, (λ = λ, r2 = r2_val, β = copy(encoder_model.β)))
+    end
+
+    for result in results
+        println("λ: ", result.λ, " - R²: ", result.r2)
+    end
+
+    # Find the best λ based on validation R²
+    r2_values = [result.r2 for result in results]
+    best_index = argmax(r2_values)
+    best_beta = results[best_index].β
+    best_lambda = results[best_index].λ
+
+    # Initialize the model using the best betas from the validation set
+    best_encoder_model = SSD.GaussianRegressionEmission(
+        input_dim = size(X_train[1])[2],  # Include intercept dimension
+        output_dim = size(Y_train[1])[2],
+        include_intercept = true,
+        λ = best_lambda  # Use the best lambda found during the sweep
+    )
+
+    # Set the best betas to the model
+    best_encoder_model.β .= best_beta
+
+    # Prepare the test data with intercept (add ones column)
+    x_test_with_intercept = hcat(ones(size(X_test_cat, 1)), X_test_cat)
+
+    # Predict on the test set
+    y_test_pred = x_test_with_intercept * best_encoder_model.β  # Make predictions using best betas
+
+    # Compute R² on the test set
+    r2_test = r2_score(y_test_cat, y_test_pred)
+
+    println("R² on test set: ", r2_test)
+
+    # Save the results to CSV files
+    save_results_to_csv(results, best_index, best_lambda, best_beta, r2_test, save_folder)
+
+end
+
+
+function fit_and_evaluate(X_r1, X_r4, Y_r1, Y_r4, FCs, λ_values, save_folder::String)
+    # Check if the save folder exists, if not, create it
+    if !isdir(save_folder)
+        mkdir(save_folder)
+    end
+
+    # Chop to GC-to-FC time and kernelize all R1 and R4 data
+    lags = 4
+    function preprocess(X, Y, FCs)
+        X_cut = Vector{Matrix{Float64}}(undef, length(X))
+        Y_cut = Vector{Matrix{Float64}}(undef, length(Y))
+        for i in 1:length(X)
+            len = FCs[i]
+            X_cut[i] = X[i][97:len, :]
+            Y_cut[i] = Y[i][97:len, :]
+        end
+        X_ready = kernelize_past_features(X_cut, lags)
+        Y_ready = trim_Y_train_past(Y_cut, lags)
+        return X_ready, Y_ready
+    end
+
+    X_r1_ready, Y_r1_ready = preprocess(X_r1, Y_r1, FCs[1:length(X_r1)])
+    X_r4_ready, Y_r4_ready = preprocess(X_r4, Y_r4, FCs[length(X_r1)+1:end])
+
+    # Stratified train/val/test split
+    X_train, Y_train, X_val, Y_val, X_test, Y_test = stratified_train_val_test_split(
+        X_r1_ready, Y_r1_ready, X_r4_ready, Y_r4_ready)
+
+    # Prepare data for training and validation
+    X_train_cat = vcat(X_train...)
+    y_train_cat = vcat(Y_train...)
+    X_test_cat = vcat(X_test...)
+    y_test_cat = vcat(Y_test...)
+    x_val_cat = vcat(X_val...)
+    y_val_cat = vcat(Y_val...)
+    X_val_with_intercept = hcat(ones(size(x_val_cat, 1)), x_val_cat)
+
+    # Initialize results list
+    results = []  
+
+    for λ in λ_values
+        println("Evaluating λ: ", λ)
+
+        # Initialize and fit the model
+        encoder_model = SSD.GaussianRegressionEmission(
+            input_dim = size(X_train[1], 2),
+            output_dim = size(Y_train[1], 2),
+            include_intercept = true,
+            λ = λ
+        )
+        SSD.fit!(encoder_model, X_train_cat, y_train_cat)
+
+        # Predict on validation set
+        y_val_pred = X_val_with_intercept * encoder_model.β
+        r2_val = r2_score(y_val_cat, y_val_pred)
+
+        # Predict on training set
+        x_train_with_intercept = hcat(ones(size(X_train_cat, 1)), X_train_cat)
+        y_train_pred = x_train_with_intercept * encoder_model.β
+        r2_train = r2_score(y_train_cat, y_train_pred)
+
+        # Store result
+        push!(results, (λ = λ, r2_train = r2_train, r2_val = r2_val, β = copy(encoder_model.β)))
+    end
+
+    # Pick best λ and set up best model
+    r2_values = [result.r2_val for result in results]
+    best_index = argmax(r2_values)
+    best_beta = results[best_index].β
+    best_lambda = results[best_index].λ
+
+    best_encoder_model = SSD.GaussianRegressionEmission(
+        input_dim = size(X_train[1], 2),
+        output_dim = size(Y_train[1], 2),
+        include_intercept = true,
+        λ = best_lambda
+    )
+    best_encoder_model.β .= best_beta
+
+    # Predict and evaluate on test set
+    x_test_with_intercept = hcat(ones(size(X_test_cat, 1)), X_test_cat)
+    y_test_pred = x_test_with_intercept * best_encoder_model.β
+    r2_test = r2_score(y_test_cat, y_test_pred)
+
+    println("R² on test set: ", r2_test)
+
+    # Save results
+    save_results_to_csv(results, best_index, best_lambda, best_beta, r2_test, save_folder)
+end
+
+
+function r2_score(y_true, y_pred)
+    ss_res = sum((y_true .- y_pred).^2)
+    ss_tot = sum((y_true .- mean(y_true, dims=1)).^2)
+    return 1 - (ss_res / ss_tot)
+end
+
+function load_results_from_csv(folder_path::String)
+    # Load the validation results
+    validation_file = joinpath(folder_path, "validation_results.csv")
+    validation_df = CSV.read(validation_file, DataFrame)
+    println("Loaded validation results from $validation_file")
+
+    # Load the best validation results (lambda and R²s)
+    best_results_file = joinpath(folder_path, "best_validation_results.csv")
+    best_results_df = CSV.read(best_results_file, DataFrame)
+    best_lambda = best_results_df.Best_Lambda[1]                # Best lambda
+    best_r2_train = best_results_df.R2_Train_Best[1]            # Best training R²
+    best_r2_val = best_results_df.R2_Validation_Best[1]         # Best validation R²
+    best_r2_test = best_results_df.R2_Test_Best[1]              # Best test R²
+    println("Loaded best validation and test results from $best_results_file")
+
+    # Load the best betas and reshape them based on saved shape
+    best_betas_file = joinpath(folder_path, "best_betas.csv")
+    best_betas_df = CSV.read(best_betas_file, DataFrame)
+    
+    # Extract the flattened betas and the shape information
+    flattened_betas = best_betas_df.flattened_betas
+    rows = best_betas_df.rows[1]
+    cols = best_betas_df.cols[1]
+
+    # Reshape the flattened betas to their original dimensions
+    best_beta = reshape(flattened_betas, rows, cols)
+    println("Loaded and reshaped best betas from $best_betas_file")
+
+    # Return all relevant results
+    return validation_df, best_lambda, best_r2_train, best_r2_val, best_r2_test, best_beta
+end
+
+
+function stratified_train_val_test_split(X_r1, y_r1, X_r4, y_r4;
+    train_ratio=0.7,
+    val_ratio=0.15,
+    seed=10)
+
+    Random.seed!(seed)
+
+    # Helper to split one trial type
+    function split_type(X, y, train_ratio, val_ratio)
+        n = length(X)
+        perm = randperm(n)
+        n_train = round(Int, train_ratio * n)
+        n_val = round(Int, val_ratio * n)
+
+        train_idx = perm[1:n_train]
+        val_idx   = perm[n_train+1:n_train+n_val]
+        test_idx  = perm[n_train+n_val+1:end]
+
+        return X[train_idx], y[train_idx], X[val_idx], y[val_idx], X[test_idx], y[test_idx]
+    end
+
+    # Split both R1 and R4
+    Xr1_train, yr1_train, Xr1_val, yr1_val, Xr1_test, yr1_test = split_type(X_r1, y_r1, train_ratio, val_ratio)
+    Xr4_train, yr4_train, Xr4_val, yr4_val, Xr4_test, yr4_test = split_type(X_r4, y_r4, train_ratio, val_ratio)
+
+    # Concatenate R1 and R4 to make final sets
+    X_train = vcat(Xr1_train, Xr4_train)
+    Y_train = vcat(yr1_train, yr4_train)
+
+    X_val = vcat(Xr1_val, Xr4_val)
+    Y_val = vcat(yr1_val, yr4_val)
+
+    X_test = vcat(Xr1_test, Xr4_test)
+    Y_test = vcat(yr1_test, yr4_test)
+
+    return X_train, Y_train, X_val, Y_val, X_test, Y_test
+end
+
+
+
+
+function save_results_to_csv(results, best_index, best_lambda, best_beta, r2_test, folder_path::String)
+    # Check if the folder exists; if not, create it
+    if !isdir(folder_path)
+        mkpath(folder_path)
+    end
+
+    # Create a DataFrame with λ, training R², and validation R²
+    validation_df = DataFrame(
+        λ = [result.λ for result in results],
+        R2_Train = [result.r2_train for result in results],
+        R2_Validation = [result.r2_val for result in results]
+    )
+
+    # Save the training/validation results to a CSV file
+    validation_file = joinpath(folder_path, "validation_results.csv")
+    CSV.write(validation_file, validation_df)
+    println("Validation results saved to $validation_file")
+
+    # Create a DataFrame for the best lambda and its R²s
+    best_results_df = DataFrame(
+        Best_Lambda = [best_lambda],
+        R2_Train_Best = [results[best_index].r2_train],
+        R2_Validation_Best = [results[best_index].r2_val],
+        R2_Test_Best = [r2_test]
+    )
+
+    # Save the best lambda results to a CSV file
+    best_results_file = joinpath(folder_path, "best_validation_results.csv")
+    CSV.write(best_results_file, best_results_df)
+    println("Best validation/test results saved to $best_results_file")
+
+    # Flatten the best_beta matrix and store its shape
+    best_betas_flat = vec(best_beta)
+    beta_shape = size(best_beta)
+
+    # Create a DataFrame for the flattened betas
+    best_betas_df = DataFrame(
+        flattened_betas = best_betas_flat,
+        rows = beta_shape[1],  # Number of rows in best_beta
+        cols = beta_shape[2]   # Number of columns in best_beta
+    )
+
+    # Save the best betas to a CSV file
+    best_betas_file = joinpath(folder_path, "best_betas.csv")
+    CSV.write(best_betas_file, best_betas_df)
+    println("Best betas saved to $best_betas_file")
+end
+
+
 
 # Helper function to split matrix into chunks
 function split_into_trials(mat::Matrix, trial_length::Int)
@@ -20,10 +446,17 @@ function split_into_trials(mat::Matrix, trial_length::Int)
 end
 
 
+using Random  # Make sure to import the Random module
+
 function train_test_split(X::Vector{<:Matrix{<:Real}}, 
                           y::Vector{<:Matrix{<:Real}}, 
-                          split_ratio::Float64=0.8)
+                          split_ratio::Float64=0.8,
+                          seed::Int=42)  # Default seed value for reproducibility
     n = length(X)  # Number of samples
+
+    # Set the random seed to ensure the permutation is the same every time
+    Random.seed!(seed)
+
     perm = randperm(n)  # Shuffle indices
     split_idx = round(Int, split_ratio * n)  # Compute split point
 
@@ -35,6 +468,7 @@ function train_test_split(X::Vector{<:Matrix{<:Real}},
 
     return X_train, y_train, X_test, y_test
 end
+
 
 
 function class_probs_inner(model::HiddenMarkovModel, Y::Matrix{<:Real}, X::Union{Matrix{<:Real},Nothing}=nothing;)
@@ -414,7 +848,7 @@ function compute_param_diffs(Σ_storage, π_storage, A_storage, β_storage)
     return sigma_changes, pi_changes, A_changes, overall_changes, β_changes
 end
 
-function load_data_encoder(path, cond)
+function load_data_encoder(path, condition)
     # Helper function to chunk matrix into 600-timepoint segments
     function chunk_matrix(mat, chunk_size)
         num_chunks = size(mat, 1) ÷ chunk_size
@@ -422,14 +856,14 @@ function load_data_encoder(path, cond)
     end
 
     # Construct file paths
-    probe1_path = path * "Probe1_" * cond * "_Uncut.csv"
-    probe2_path = path * "Probe2_" * cond * "_Uncut.csv"
+    probe1_path = path * "Probe1_" * condition * "_Uncut.csv"
+    probe2_path = path * "Probe2_" * condition * "_Uncut.csv"
 
-    PCA_P1_path = path * "PCA_Probe1_" * cond * "_Uncut.csv"
-    PCA_P2_path = path * "PCA_Probe2_" * cond * "_Uncut.csv"
+    PCA_P1_path = path * "PCA_Probe1_" * condition * "_Uncut.csv"
+    PCA_P2_path = path * "PCA_Probe2_" * condition * "_Uncut.csv"
 
-    SVD_path = path * "SVD_Feats_" * cond * "_Uncut.csv"
-    KP_path = path * "Keypoint_Feats_" * cond * "_Uncut.csv"
+    SVD_path = path * "SVD_Feats_" * condition * "_Uncut.csv"
+    KP_path = path * "Keypoint_Feats_" * condition * "_Uncut.csv"
 
     # Load the data into matrices
     probe1_mat = Matrix(CSV.read(probe1_path, DataFrame; header=false))
@@ -457,23 +891,82 @@ function load_data_encoder(path, cond)
     return probe1_chunks, probe2_chunks, PCA_P1_chunks, PCA_P2_chunks, SVD_chunks, KP_chunks
 end
 
-function load_data(path, cond, TW)
+function load_data_encoder_cut(path, condition)
+    # Construct file paths
+    probe1_path = path * "Probe1_" * condition * "_Cut.csv"
+    probe2_path = path * "Probe2_" * condition * "_Cut.csv"
+    PCA_P1_path = path * "PCA_Probe1_" * condition * "_Cut.csv"
+    PCA_P2_path = path * "PCA_Probe2_" * condition * "_Cut.csv"
+    SVD_path = path * "SVD_Feats_" * condition * "_Cut.csv"
+    KP_path = path * "Keypoint_Feats_" * condition * "_Cut.csv"
+    FCs_path = path * "FCs_" * condition * ".csv"
+    LRCs_path = path * "LRCs_" * condition * ".csv"
+    Tongue_path = path * "Tongue_" * condition * ".csv"
+
+    # Load the data into matrices
+    probe1_mat = Matrix(CSV.read(probe1_path, DataFrame; header=false))
+    probe2_mat = Matrix(CSV.read(probe2_path, DataFrame; header=false))
+    PCA_P1_mat = Matrix(CSV.read(PCA_P1_path, DataFrame; header=false))
+    PCA_P2_mat = Matrix(CSV.read(PCA_P2_path, DataFrame; header=false))
+    SVD_mat = Matrix(CSV.read(SVD_path, DataFrame; header=false))  # already downsampled to 100Hz
+    KP_mat = Matrix(CSV.read(KP_path, DataFrame; header=false))
+    FCs_mat = Matrix(CSV.read(FCs_path, DataFrame; header=false))
+    LRCs = vec(Matrix(CSV.read(LRCs_path, DataFrame; header=false)))  # 1D vector of rounded trial lengths
+    Tongue_mat = Matrix(CSV.read(Tongue_path, DataFrame; header=false))
+
+    # Chunking function
+    function chunk_matrix(mat, lengths)
+        chunks = Vector{Matrix{Float64}}()
+        start_idx = 1
+        for len in lengths
+            stop_idx = start_idx + len - 1
+            push!(chunks, mat[start_idx:stop_idx, :])
+            start_idx = stop_idx + 1
+        end
+        return chunks
+    end
+
+    # Chunk all data at 100Hz
+    probe1_chunks = chunk_matrix(probe1_mat, LRCs)
+    probe2_chunks = chunk_matrix(probe2_mat, LRCs)
+    PCA_P1_chunks = chunk_matrix(PCA_P1_mat, LRCs)
+    PCA_P2_chunks = chunk_matrix(PCA_P2_mat, LRCs)
+    KP_chunks = chunk_matrix(KP_mat, LRCs)
+    SVD_chunks = chunk_matrix(SVD_mat, LRCs)
+
+    return probe1_chunks, probe2_chunks, PCA_P1_chunks, PCA_P2_chunks,
+           SVD_chunks, KP_chunks, FCs_mat, LRCs, Tongue_mat
+end
+
+function ave_vector(X)
+    meanX = mean(hcat(X...), dims=2)
+    return meanX
+end
+
+function average_PCs(PCA_Obj)
+    PCA_stack = cat(PCA_Obj...; dims=3)
+    trial_average = mean(PCA_stack; dims=3)
+    trial_average = dropdims(trial_average; dims=3)
+    return trial_average
+end
+
+function load_data(path, condition, TW)
     
     # Neural probe data paths -> check metadata.txt or excel sheet for probe locations
-    probe1_path = path*"Probe1_"*cond*".csv"
-    # probe1_path_PCA = path*"Probe1_"*cond*"_PC"*".csv"
-    probe2_path = path*"Probe2_"*cond*".csv"
+    probe1_path = path*"Probe1_"*condition*".csv"
+    # probe1_path_PCA = path*"Probe1_"*condition*"_PC"*".csv"
+    probe2_path = path*"Probe2_"*condition*".csv"
 
     # Kinematic feats paths -> tongue path has tongue length, jaw_feats has jaw pos and jaw vel 
-    kin_path = path*"Jaw_"*cond*".csv"
-    tongue_path = path*"Tongue_"*cond*".csv"
-    # PCA_feats_path = path*"PCA_feats_"*cond*".csv"
-    # PCA_feats_path_uncut = path*"PCA_feats_uncut_"*cond*".csv"
-    Jaw_feats_path = path*"Jaw_feats_"*cond*".csv"
+    kin_path = path*"Jaw_"*condition*".csv"
+    tongue_path = path*"Tongue_"*condition*".csv"
+    # PCA_feats_path = path*"PCA_feats_"*condition*".csv"
+    # PCA_feats_path_uncut = path*"PCA_feats_uncut_"*condition*".csv"
+    Jaw_feats_path = path*"Jaw_feats_"*condition*".csv"
     
     # Trial information paths -> trial lengths and first lick contact paths
-    trial_lpath = path*"Trial_End_"*cond*".csv"
-    first_lick_path = path*"First_Contact_"*cond*".csv"
+    trial_lpath = path*"Trial_End_"*condition*".csv"
+    first_lick_path = path*"First_Contact_"*condition*".csv"
     
     
     # Load the data
@@ -554,14 +1047,14 @@ function load_data(path, cond, TW)
 end
 
 
-function load_data_uncut(path, cond, TW, trial_length)
+function load_data_uncut(path, condition, TW, trial_length)
 
     # Neural probe data paths -> check metadata.txt or excel sheet for probe locations
-    probe1_path = path*"Probe1_uncut_"*cond*".csv"
-    probe2_path = path*"Probe2_uncut_"*cond*".csv"
-    # PCA_feats_path = path*"PCA_feats_uncut_"*cond*".csv"
-    tongue_path = path*"Tongue_uncut_"*cond*".csv"
-    Jaw_feats_path = path*"Jaw_feats_"*cond*".csv"
+    probe1_path = path*"Probe1_uncut_"*condition*".csv"
+    probe2_path = path*"Probe2_uncut_"*condition*".csv"
+    # PCA_feats_path = path*"PCA_feats_uncut_"*condition*".csv"
+    tongue_path = path*"Tongue_uncut_"*condition*".csv"
+    Jaw_feats_path = path*"Jaw_feats_"*condition*".csv"
 
     # Read in uncut data
     data_df_uncut_p1 = CSV.read(probe1_path, DataFrame, header=false)
@@ -649,6 +1142,7 @@ function kernelize_past_features(X_train::Vector{Matrix{T}}, lags::Int=4) where 
         start_idx = lags + 1
         end_idx = num_timepoints
 
+        
         # Initialize new feature matrix
         num_new_timepoints = end_idx - start_idx + 1
         lagged_features = Matrix{T}(undef, num_new_timepoints, num_features * (lags + 1))
@@ -756,7 +1250,7 @@ function construct_gamma(Y::Vector{Matrix{Float64}}, time=10, factor=1)
         gamma_matrix[time+1:End_idx-time*factor-1, 1] .= 0.0
         gamma_matrix[time+1:End_idx-time*factor-1, 2] .= 0.0
 
-        # Second GLM weights (from trial end and back)
+        # Secondition GLM weights (from trial end and back)
         gamma_matrix[End_idx-time*factor:end, 1] .= 0.0
         gamma_matrix[End_idx-time*factor:end, 2] .= 1.0
 
@@ -790,7 +1284,7 @@ function construct_FC_gamma(Y::Vector{Vector{Float64}}, firstcontact::Vector{Int
         gamma_matrix[time-40:time+10, 1] .= 1.0
         gamma_matrix[time-40:time+10, 2] .= 0.0
 
-        # Second GLM weights (from trial end and back)
+        # Secondition GLM weights (from trial end and back)
         gamma_matrix[End_idx-10:end, 2] .= 1.0
 
         # # Construct trial dependent gamma_matrix

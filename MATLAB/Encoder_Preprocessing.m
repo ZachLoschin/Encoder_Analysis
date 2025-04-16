@@ -16,14 +16,14 @@ addpath(d)
 addpath(genpath(fullfile(d,'utils')))
 addpath(genpath(fullfile(d,'zutils')))
 addpath(genpath(fullfile(d,'DataLoadingScripts')))
+addpath(genpath(fullfile(d,'ObjVis')))
 addpath(genpath(fullfile(d,'funcs')))
-addpath("C:\Users\zachl\OneDrive\BU_YEAR1\Research\Tudor_Data\disengagement\ObjVis")
 %% PARAMETERS
 params.alignEvent          = 'goCue'; % 'fourthLick' 'goCue'  'moveOnset'  'firstLick' 'thirdLick' 'lastLick' 'reward'
 
 % time warping only operates on neural data for now.
 params.behav_only          = 0;
-params.timeWarp            = 0;  % piecewise linear time warping - each lick duration on each trial gets warped to median lick duration for that lick across trials
+params.timeWarp            = 1;  % piecewise linear time warping - each lick duration on each trial gets warped to median lick duration for that lick across trials
 params.nLicks              = 20; % number of post go cue licks to calculate median lick duration for and warp individual trials to
 
 params.lowFR               = 1; % remove clusters with firing rates across all trials less than this val
@@ -223,22 +223,46 @@ R4_Trial_Features = extract_trial_features(R4_Valid_Features, R4_Valid_Times, R4
 R1_SVD_Features_Uncut = [];
 R4_SVD_Features_Uncut = [];
 
-% Loop through the trials in R1_Trial_Features and R4_Trial_Features
 for i = 1:length(R1_Trial_Features)
-    % Reshape each trial matrix into (2400*trials) x 100 by concatenating across the time dimension
-    R1_SVD_Features_Uncut = [R1_SVD_Features_Uncut; R1_Trial_Features{i}];
+    % Resample time axis from 400Hz to 100Hz (i.e., 1/4th the number of timepoints)
+    resampled = resample(R1_Trial_Features{i}, 1, 4);  % downsample each trial
+    R1_SVD_Features_Uncut = [R1_SVD_Features_Uncut; resampled];
 end
 
 for i = 1:length(R4_Trial_Features)
-    R4_SVD_Features_Uncut = [R4_SVD_Features_Uncut; R4_Trial_Features{i}];
+    resampled = resample(R4_Trial_Features{i}, 1, 4);
+    R4_SVD_Features_Uncut = [R4_SVD_Features_Uncut; resampled];
 end
+
 
 % Convert cell array to 3D matrix
 R1_SVD_Features_mat = cat(3, R1_Trial_Features{:});
 R4_SVD_Features_mat = cat(3, R4_Trial_Features{:});
 
-R1_SVD_Features_Cut = chop_and_stack_neural_data(R1_SVD_Features_mat, LRCs_R1_clean);
-R4_SVD_Features_Cut = chop_and_stack_neural_data(R4_SVD_Features_mat, LRCs_R4_clean);
+%% Get the cut features too
+
+% Preallocate with cell because resampled lengths may vary
+R1_SVD_Features_resampled = cell(1, size(R1_SVD_Features_mat, 3));
+R4_SVD_Features_resampled = cell(1, size(R4_SVD_Features_mat, 3));
+
+for i = 1:size(R1_SVD_Features_mat, 3)
+    trial = R1_SVD_Features_mat(:, :, i);  % [T x D]
+    resampled = resample(trial, 1, 4);     % downsample time axis
+    R1_SVD_Features_resampled{i} = resampled;
+end
+
+for i = 1:size(R4_SVD_Features_mat, 3)
+    trial = R4_SVD_Features_mat(:, :, i);
+    resampled = resample(trial, 1, 4);
+    R4_SVD_Features_resampled{i} = resampled;
+end
+
+% Convert back to matrix
+R1_SVD_Features_mat_resampled = cat(3, R1_SVD_Features_resampled{:});
+R4_SVD_Features_mat_resampled = cat(3, R4_SVD_Features_resampled{:});
+
+R1_SVD_Features_Cut = chop_and_stack_neural_data(R1_SVD_Features_mat_resampled, LRCs_R1_clean, 100);
+R4_SVD_Features_Cut = chop_and_stack_neural_data(R4_SVD_Features_mat_resampled, LRCs_R4_clean, 100);
 
 
 %% Get the keypoints by trial
@@ -253,8 +277,8 @@ R1_Keypoints_Uncut = reshape(permute(R1_Keypoints, [1, 3, 2]), [], size(R1_Keypo
 R4_Keypoints_Uncut = reshape(permute(R4_Keypoints, [1, 3, 2]), [], size(R4_Keypoints, 2));
 
 % Chop trials to LRCs for Cut storage
-R1_Keypoints_Cut = chop_and_stack_neural_data(R1_Keypoints, LRCs_R1_clean);
-R4_Keypoints_Cut = chop_and_stack_neural_data(R4_Keypoints, LRCs_R4_clean);
+R1_Keypoints_Cut = chop_and_stack_neural_data(R1_Keypoints, LRCs_R1_clean, 100);
+R4_Keypoints_Cut = chop_and_stack_neural_data(R4_Keypoints, LRCs_R4_clean, 100);
 
 %% -- Get Region Specific Neural Data and Filter It-- %%
 % Tudor code for separating probe 1 and 2
@@ -296,11 +320,11 @@ probe2_R1_Uncut = reshape(permute(probe2_R1_norm, [1, 3, 2]), [], size(probe2_R1
 
 %% Chop up the neural data to relevant trial ends
 % Handles LRCs relative to GC if neural data has 1s pre GC stored
-probe1_R4_Cut = chop_and_stack_neural_data(probe1_R4_norm, LRCs_R4_clean);
-probe1_R1_Cut = chop_and_stack_neural_data(probe1_R1_norm, LRCs_R1_clean);
+probe1_R4_Cut = chop_and_stack_neural_data(probe1_R4_norm, LRCs_R4_clean, 100);
+probe1_R1_Cut = chop_and_stack_neural_data(probe1_R1_norm, LRCs_R1_clean, 100);
 
-probe2_R4_Cut = chop_and_stack_neural_data(probe2_R4_norm, LRCs_R4_clean);
-probe2_R1_Cut = chop_and_stack_neural_data(probe2_R1_norm, LRCs_R1_clean);
+probe2_R4_Cut = chop_and_stack_neural_data(probe2_R4_norm, LRCs_R4_clean, 100);
+probe2_R1_Cut = chop_and_stack_neural_data(probe2_R1_norm, LRCs_R1_clean, 100);
 
 %% Neural PCs
 % Get -1s -> 5s data
@@ -343,10 +367,10 @@ Probe2_PCs_R1_Uncut = reshape(Probe2_PCs_R1, [], size(Probe2_PCs_R1, 3));
 Probe2_PCs_R4_Uncut = reshape(Probe2_PCs_R4, [], size(Probe2_PCs_R4, 3));
 
 % Reshape to input into chopping procedure
-Probe1_PCs_R4_Cut = chop_and_stack_neural_data(permute(Probe1_PCs_R4, [1, 3, 2]), LRCs_R4_clean);
-Probe2_PCs_R4_Cut = chop_and_stack_neural_data(permute(Probe2_PCs_R4, [1, 3, 2]), LRCs_R4_clean);
-Probe1_PCs_R1_Cut = chop_and_stack_neural_data(permute(Probe1_PCs_R1, [1, 3, 2]), LRCs_R1_clean);
-Probe2_PCs_R1_Cut = chop_and_stack_neural_data(permute(Probe2_PCs_R1, [1, 3, 2]), LRCs_R1_clean);
+Probe1_PCs_R4_Cut = chop_and_stack_neural_data(permute(Probe1_PCs_R4, [1, 3, 2]), LRCs_R4_clean, 100);
+Probe2_PCs_R4_Cut = chop_and_stack_neural_data(permute(Probe2_PCs_R4, [1, 3, 2]), LRCs_R4_clean, 100);
+Probe1_PCs_R1_Cut = chop_and_stack_neural_data(permute(Probe1_PCs_R1, [1, 3, 2]), LRCs_R1_clean, 100);
+Probe2_PCs_R1_Cut = chop_and_stack_neural_data(permute(Probe2_PCs_R1, [1, 3, 2]), LRCs_R1_clean, 100);
 
 %% Get the tongue length, FLCs, and LRCs times to save
 SR = 100;
@@ -357,11 +381,12 @@ R4_Tongue = all_length(pre_gc_points-100+1:end, R4_Trials);
 R1_Tongue_Uncut = R1_Tongue(:,final_R1_trials);
 R4_Tongue_Uncut = R4_Tongue(:,final_R4_trials);
 
-FCs_Adj_R1 = FCs_R1_clean + SR;
-FCs_Adj_R4 = FCs_R4_clean + SR;
+FCs_Adj_R1 = ceil(FCs_R1_clean*SR + SR);
+FCs_Adj_R4 = ceil(FCs_R4_clean*SR + SR);
 
-LRCs_Adj_R1 = LRCs_R1_clean + SR;
-LRCs_Adj_R4 = LRCs_R4_clean + SR;
+LRCs_Adj_R1 = ceil(LRCs_R1_clean*SR + SR);
+LRCs_Adj_R4 = ceil(LRCs_R4_clean*SR + SR);
+
 
 %% -- Construct the Output File -- %%
 sessionName = meta.anm;
@@ -370,7 +395,7 @@ sessionDate = meta.date;
 % Construct the output folder path
 outputFolder = fullfile( ...
     'C:\Research\Encoder_Modeling\Encoder_Analysis\Processed_Encoder', ...
-    [sessionName '_' sessionDate]);
+    [sessionName '_' sessionDate 'TW']);
 
 % Create the output folder if it does not exist
 if ~exist(outputFolder, 'dir')
@@ -422,7 +447,7 @@ csvwrite(fullfile(outputFolder, "FCs_R1.csv"), FCs_Adj_R1);
 csvwrite(fullfile(outputFolder, "FCs_R4.csv"), FCs_Adj_R4);
 
 csvwrite(fullfile(outputFolder, "LRCs_R1.csv"), LRCs_Adj_R1);
-csvwrite(fullfile(outputFolder, "LRCs_R1.csv"), LRCs_Adj_R1);
+csvwrite(fullfile(outputFolder, "LRCs_R4.csv"), LRCs_Adj_R4);
 
 % Save metadata as a .txt file for record-keeping
 metadataFile = fullfile(outputFolder, 'metadata.txt');
