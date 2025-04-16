@@ -1,6 +1,6 @@
 
 using Pkg
-Pkg.activate("C:\\Research\\Encoder_Modeling\\Encoder_Analysis")
+# Pkg.activate("C:\\Research\\Encoder_Modeling\\Encoder_Analysis")
 
 using Random
 using StateSpaceDynamics
@@ -13,7 +13,8 @@ using LinearAlgebra
 using MultivariateStats
 
 using Dates
-include("C:\\Research\\Encoder_Modeling\\Encoder_Analysis\\Julia\\Zutils.jl")
+# include("C:\\Research\\Encoder_Modeling\\Encoder_Analysis\\Julia\\Zutils.jl")
+include(".\\Julia\\Zutils.jl")
 # using StatsPlots
 
 # For testing and debugging
@@ -22,8 +23,8 @@ Random.seed!(1234);
 const SSD = StateSpaceDynamics
 
 # path = "C:\\Users\\zachl\\OneDrive\\BU_YEAR1\\Research\\Tudor_Data\\Disengagement_Analysis_2025\\preprocessed_data\\TD13d_2024-11-13\\";  # Probe 2
-path = "C:\\Research\\Encoder_Modeling\\Encoder_Analysis\\Processed_Encoder\\TD13d_2024-11-12\\";  # Probe 1
-
+# path = "C:\\Research\\Encoder_Modeling\\Encoder_Analysis\\Processed_Encoder\\TD13d_2024-11-12\\";  # Probe 1
+path = "U:\\eng_research_economo2\\ZFL\\Disengagement_Encoder\\TD13d_2024-11-12\\"
 Probe1_R1, Probe2_R1, PCA_P1_R1, PCA_P2_R1, SVD_R1, KP_R1 = load_data_encoder(path, "R1");
 Probe1_R4, Probe2_R4, PCA_P1_R4, PCA_P2_R4, SVD_R4, KP_R4 = load_data_encoder(path, "R4");
 
@@ -78,15 +79,14 @@ X = cat(SVD_R1_selected, SVD_R4_selected, dims=1)
 Y = cat(Probe1_R1, Probe1_R4, dims=1)
 FCs = cat(FCs_R1, FCs_R4, dims=2)
 LRCs= cat(LRCs_R1, LRCs_R4, dims=1)
-# λ_values = [0.0001, 0.001, 0.01, 0.1, 0.0, 1.0, 10.0, 100.0, 1000.0, 10000.0, 100000.0, 1000000.0, 10000000.0]
-λ_values = [0.01]
+λ_values = [0.0001, 0.001, 0.01, 0.1, 0.0, 1.0, 10.0, 100.0, 1000.0, 10000.0, 100000.0, 1000000.0, 10000000.0]
 fit_and_evaluate(SVD_R1_selected, SVD_R4_selected, Probe1_R1, Probe1_R4, FCs, LRCs, λ_values, "Results\\TD13d_11_12\\SVD_To_Neural_FRs")
 
 """
 Section for testing SVD features to nerual PCs
 """
 
-X = cat(SVD_R1, SVD_R4, dims=1)
+X = cat(SVD_R1_Selected, SVD_R4_Selected, dims=1)
 Y = cat(PCA_P1_R1, PCA_P1_R4, dims=1)
 fit_and_evaluate(SVD_R1_selected, SVD_R4_selected, PCA_P1_R1, PCA_P1_R4 , FCs, LRCs, λ_values, "Results\\TD13d_11_12\\SVD_To_Neural_PCs")
 
@@ -159,17 +159,6 @@ R4_mean, R4_std = sliding_window_r2(KP_R4, Probe1_R4, results_folder, "R4")
 
 p = plot_sliding_window_r2(R1_mean, R1_std, R4_mean, R4_std)
 savefig(p, joinpath(results_folder, "Sliding_Window_R2.png"))
-
-
-
-
-
-
-
-
-
-
-
 
 
 
