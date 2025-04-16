@@ -75,20 +75,20 @@ Section for testing SVD features to nerual FRs
 SVD_R1_selected = [hcat(x[:, 1:20], x[:, 51:70]) for x in SVD_R1]
 SVD_R4_selected = [hcat(x[:, 1:20], x[:, 51:70]) for x in SVD_R4]
 
-X = cat(SVD_R1_selected, SVD_R4_selected, dims=1)
+X = cat(SVD_R1, SVD_R4, dims=1)
 Y = cat(Probe1_R1, Probe1_R4, dims=1)
 FCs = cat(FCs_R1, FCs_R4, dims=2)
 LRCs= cat(LRCs_R1, LRCs_R4, dims=1)
 λ_values = [0.0001, 0.001, 0.01, 0.1, 0.0, 1.0, 10.0, 100.0, 1000.0, 10000.0, 100000.0, 1000000.0, 10000000.0]
-fit_and_evaluate(SVD_R1_selected, SVD_R4_selected, Probe1_R1, Probe1_R4, FCs, LRCs, λ_values, "Results\\TD13d_11_12\\SVD_To_Neural_FRs")
+fit_and_evaluate(SVD_R1, SVD_R4, Probe1_R1, Probe1_R4, FCs, LRCs, λ_values, "Results\\TD13d_11_12\\SVD_To_Neural_FRs")
 
 """
 Section for testing SVD features to nerual PCs
 """
 
-X = cat(SVD_R1_Selected, SVD_R4_Selected, dims=1)
+X = cat(SVD_R1, SVD_R4, dims=1)
 Y = cat(PCA_P1_R1, PCA_P1_R4, dims=1)
-fit_and_evaluate(SVD_R1_selected, SVD_R4_selected, PCA_P1_R1, PCA_P1_R4 , FCs, LRCs, λ_values, "Results\\TD13d_11_12\\SVD_To_Neural_PCs")
+fit_and_evaluate(SVD_R1, SVD_R4, PCA_P1_R1, PCA_P1_R4 , FCs, LRCs, λ_values, "Results\\TD13d_11_12\\SVD_To_Neural_PCs")
 
 """
 Section for testing KP Features to nerual FRs
@@ -160,7 +160,35 @@ R4_mean, R4_std = sliding_window_r2(KP_R4, Probe1_R4, results_folder, "R4")
 p = plot_sliding_window_r2(R1_mean, R1_std, R4_mean, R4_std)
 savefig(p, joinpath(results_folder, "Sliding_Window_R2.png"))
 
+"""
+Switching Encoder Analysis
+"""
+lags = 4
+X_ready = kernelize_past_features(SVD_R1_selected, lags)
+Y_ready = trim_Y_train_past(PCA_P1_R1, lags)
 
+XX = permutedims.(X_ready);
+YY = permutedims.(Y_ready);
+
+
+model = SwitchingGaussianRegression(;K=2, input_dim = size(X_ready[1], 2), output_dim = size(Y_ready[1], 2), include_intercept=true);
+model.A = [0.999 0.001; 0.001 0.999];
+model.πₖ = [0.999; 0.0001];
+
+validation_df, best_lambda, best_r2_train, best_r2_val, best_r2_test, best_r2_fullcut, best_beta = load_results_from_csv("Results\\TD13d_11_12\\SVD_Select_To_Neural_PCs")
+
+model.B[1].β = best_beta
+model.B[1].λ = best_lambda
+
+model.B[2].λ = best_lambda
+
+
+
+# lls = fit_switching_encoder!(model, YY, XX; max_iters=100)
+
+lls = SSD.fit!(model, YY, XX; max_iters=25)
+
+model.B[1]
 
 # """
 # ******* DISENGAGED ENCODER FITTING BELOW *******
