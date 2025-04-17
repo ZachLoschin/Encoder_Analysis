@@ -12,41 +12,190 @@ using Statistics
 const SSD = StateSpaceDynamics
 using Random
 
-function plot_sliding_window_r2(R1_mean, R1_std, R4_mean, R4_std; window_size=10)
-    max_points = 400
-    num_windows = div(max_points, window_size)  # 30 windows for 300 points
 
-    # Generate time axis from -1s to 2s
-    time_axis = range(-1, stop=2, length=num_windows)
 
-    # Define custom x-ticks
-    xticks = -1:0.5:3
+function fit_custom!(
+    model::HiddenMarkovModel,
+    Y::Vector{<:Matrix{<:Real}},
+    X::Union{Vector{<:Matrix{<:Real}},Nothing}=nothing;
+    max_iters::Int=100,
+    tol::Float64=1e-6,
+)
+    lls = [-Inf]
+    data = X === nothing ? (Y,) : (X, Y)
 
-    p = plot(
-        time_axis, R1_mean[1:num_windows];
-        ribbon=R1_std[1:num_windows],
-        label="R1",
-        lw=2,
-        color=:blue,
-        xlabel="Time (s)",
-        ylabel="R²",
-        title="Sliding Window R² (Mean ± Std)",
-        legend=:topright,
-        fillalpha=0.2,
-        xticks=xticks,
-        ylim=(-2, 1)
+    # Initialize log_likelihood
+    log_likelihood = -Inf
+
+    # Transform each matrix in each tuple to the correct orientation
+    transposed_matrices = map(data_tuple -> Matrix.(transpose.(data_tuple)), data)
+    zipped_matrices = collect(zip(transposed_matrices...))
+    total_obs = sum(size(trial_mat[1], 1) for trial_mat in zipped_matrices)
+
+    # initialize a vector of ForwardBackward storage and an aggregate storage
+    FB_storage_vec = [SSD.initialize_forward_backward(model, size(trial_tuple[1],1)) for trial_tuple in zipped_matrices]
+    Aggregate_FB_storage = SSD.initialize_forward_backward(model, total_obs)
+
+    for iter in 1:max_iters
+        println("Iter: ", iter)
+        # broadcast estep!() to all storage structs
+        output = SSD.estep!.(Ref(model), zipped_matrices, FB_storage_vec)
+
+        # collect storage stucts into one struct for m step
+        SSD.aggregate_forward_backward!(Aggregate_FB_storage, FB_storage_vec)
+
+        # Calculate log_likelihood
+        log_likelihood_current = SSD.logsumexp(Aggregate_FB_storage.α[:, end])
+        push!(lls, log_likelihood_current)
+
+        # Check for convergence
+        if abs(log_likelihood_current - log_likelihood) < tol
+            break
+        else
+            log_likelihood = log_likelihood_current
+        end
+
+        # Get data trial tuples stacked for mstep!()
+        stacked_data = SSD.stack_tuples(zipped_matrices)
+
+        # M_step
+        SSD.mstep!(model, FB_storage_vec, Aggregate_FB_storage, stacked_data)
+    end
+
+    return lls
+end
+
+function SSD.update_emissions!(model::SSD.AbstractHMM, FB_storage::SSD.ForwardBackward, data)
+    println("Custom update emissions")
+    # update regression models
+    w = exp.(permutedims(FB_storage.γ))
+
+    # println("Weights same across states? ", all(w[:,1] .== w[:,2]))
+
+    # check threading speed here
+    for k in 1:(model.K)
+        println("Model: ", k)
+        β = weighted_ridge_regression(data..., model.B[1].λ, w=w[:,k])
+        model.B[k].β = β
+    end
+end
+
+
+function weighted_ridge_regression(X::Matrix{Float64}, Y::Matrix{Float64}, λ::Float64; w::Vector{Float64}=ones(size(X,1)))
+    @assert size(X, 1) == size(Y, 1) == length(w) "Number of rows in X, Y, and length of w must match"
+
+    N, D = size(X)
+    X_bias = hcat(ones(N), X)  # Add intercept column
+
+    # Apply weights
+    W = Diagonal(w)
+    Xw = W * X_bias
+    Yw = W * Y
+
+    # Regularization: do not regularize the intercept term (first row/col)
+    reg = zeros(D + 1, D + 1)
+    reg[2:end, 2:end] .= λ
+
+    β = (Xw'Xw + reg) \ (Xw'Yw)
+
+    return β
+end
+
+
+function fit_and_evaluate(
+    X_r1, X_r4, Y_r1, Y_r4,
+    FCs, LRCs, λ_values,
+    save_folder::String;
+)
+    if !isdir(save_folder)
+        mkdir(save_folder)
+    end
+
+    lags = 4
+    function preprocess(X, Y, FCs)
+        X_cut = Vector{Matrix{Float64}}(undef, length(X))
+        Y_cut = Vector{Matrix{Float64}}(undef, length(Y))
+        for i in 1:length(X)
+            len = FCs[i]
+            X_cut[i] = X[i][97:len, :]
+            Y_cut[i] = Y[i][97:len, :]
+        end
+        X_ready = kernelize_past_features(X_cut, lags)
+        Y_ready = trim_Y_train_past(Y_cut, lags)
+        return X_ready, Y_ready
+    end
+
+    # Standard FC cuts
+    X_r1_ready, Y_r1_ready = preprocess(X_r1, Y_r1, FCs[1:length(X_r1)])
+    X_r4_ready, Y_r4_ready = preprocess(X_r4, Y_r4, FCs[length(X_r1)+1:end])
+
+    # Train/val/test split
+    X_train, Y_train, X_val, Y_val, X_test, Y_test = stratified_train_val_test_split(
+        X_r1_ready, Y_r1_ready, X_r4_ready, Y_r4_ready
     )
 
-    plot!(
-        time_axis, R4_mean[1:num_windows];
-        ribbon=R4_std[1:num_windows],
-        label="R4",
-        lw=2,
-        color=:red,
-        fillalpha=0.2,
+    # Concatenate data
+    X_train_cat = vcat(X_train...)
+    y_train_cat = vcat(Y_train...)
+    X_test_cat = vcat(X_test...)
+    y_test_cat = vcat(Y_test...)
+    x_val_cat = vcat(X_val...)
+    y_val_cat = vcat(Y_val...)
+
+    X_val_with_intercept = hcat(ones(size(x_val_cat, 1)), x_val_cat)
+
+    results = []
+
+    for λ in λ_values
+        println("Evaluating λ: ", λ)
+
+        # β = ridge(X_train_cat, y_train_cat, λ)
+        # β = vcat(β[end, :]', β[1:end-1, :])
+
+        β = weighted_ridge_regression(X_train_cat, y_train_cat, λ)
+
+        y_val_pred = X_val_with_intercept * β
+        r2_val = r2_score(y_val_cat, y_val_pred)
+
+        x_train_with_intercept = hcat(ones(size(X_train_cat, 1)), X_train_cat)
+        y_train_pred = x_train_with_intercept * β
+        r2_train = r2_score(y_train_cat, y_train_pred)
+
+        push!(results, (λ = λ, r2_train = r2_train, r2_val = r2_val, β = copy(β)))
+    end
+
+    best_index = argmax([r.r2_val for r in results])
+    best_beta = results[best_index].β
+    best_lambda = results[best_index].λ
+
+    # Evaluate on test set
+    x_test_with_intercept = hcat(ones(size(X_test_cat, 1)), X_test_cat)
+    y_test_pred = x_test_with_intercept * best_beta
+    r2_test = r2_score(y_test_cat, y_test_pred)
+    println("R² on test set: ", r2_test)
+
+    # Optional: evaluate on full cut
+    r2_fullcut = missing
+    if LRCs !== nothing
+        X_r1_LRC, Y_r1_LRC = preprocess(X_r1, Y_r1, LRCs[1:length(X_r1)])
+        X_r4_LRC, Y_r4_LRC = preprocess(X_r4, Y_r4, LRCs[length(X_r1)+1:end])
+
+        X_fullcut = vcat(X_r1_LRC..., X_r4_LRC...)
+        Y_fullcut = vcat(Y_r1_LRC..., Y_r4_LRC...)
+
+        x_full_with_intercept = hcat(ones(size(X_fullcut, 1)), X_fullcut)
+        y_full_pred = x_full_with_intercept * best_beta
+        r2_fullcut = r2_score(Y_fullcut, y_full_pred)
+
+        println("R² on full-cut (97:LRC) data: ", r2_fullcut)
+    end
+
+    save_results_to_csv(
+        results, best_index, best_lambda, best_beta,
+        r2_test, r2_fullcut, save_folder
     )
 
-    return p
+    return best_beta, r2_test, r2_fullcut
 end
 
 function sliding_window_r2(X, Y, first_contacts, results_folder::String, condition::String)
@@ -59,8 +208,8 @@ function sliding_window_r2(X, Y, first_contacts, results_folder::String, conditi
     Y_ready = trim_Y_train_past(Y, lags)
 
     # Sliding window parameters
-    window_size = 5
-    num_windows = 5  # for example, you can adjust this
+    window_size = 10
+    num_windows = 2  # for example, you can adjust this
 
     r2_per_window = Float64[]  # To store mean R² for each window
     r2_per_window_std = Float64[]  # To store std of R² for each window
@@ -100,6 +249,43 @@ function sliding_window_r2(X, Y, first_contacts, results_folder::String, conditi
     CSV.write(result_filename, results_df)
 
     return r2_per_window, r2_per_window_std
+end
+
+function plot_sliding_window_r2(R1_mean, R1_std, R4_mean, R4_std; window_size=10)
+    max_points = 400
+    num_windows = div(max_points, window_size)  # 30 windows for 300 points
+
+    # Generate time axis from -1s to 2s
+    time_axis = range(-1, stop=2, length=num_windows)
+
+    # Define custom x-ticks
+    xticks = -1:0.5:3
+
+    p = plot(
+        time_axis, R1_mean[1:num_windows];
+        ribbon=R1_std[1:num_windows],
+        label="R1",
+        lw=2,
+        color=:blue,
+        xlabel="Time (s)",
+        ylabel="R²",
+        title="Sliding Window R² (Mean ± Std)",
+        legend=:topright,
+        fillalpha=0.2,
+        xticks=xticks,
+        ylim=(-2, 1)
+    )
+
+    plot!(
+        time_axis, R4_mean[1:num_windows];
+        ribbon=R4_std[1:num_windows],
+        label="R4",
+        lw=2,
+        color=:red,
+        fillalpha=0.2,
+    )
+
+    return p
 end
 
 

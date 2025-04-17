@@ -78,17 +78,16 @@ SVD_R4_selected = [hcat(x[:, 1:20], x[:, 51:70]) for x in SVD_R4]
 FCs = cat(FCs_R1, FCs_R4, dims=2)
 LRCs= cat(LRCs_R1, LRCs_R4, dims=1)
 λ_values = 10 .^ range(-6, 10; length=100)
-
-best_β, r2_test, r2_fullcut = fit_and_evaluate(SVD_R1_selected, SVD_R4_selected, Probe1_R1, Probe1_R4, FCs, LRCs, λ_values, "Results\\TD13d_11_12\\SVD_Red_To_Neural_FRs")
-best_β, r2_test, r2_fullcut = fit_and_evaluate(SVD_R1, SVD_R4, Probe1_R1, Probe1_R4, FCs, LRCs, λ_values, "Results\\TD13d_11_12\\SVD_To_Neural_FRs")
-
+# FIRST LRC SHOULD BE FCs
+best_β, r2_test, r2_fullcut = fit_and_evaluate(SVD_R1_selected, SVD_R4_selected, Probe1_R1, Probe1_R4, LRCs, LRCs, λ_values, "Results\\TD13d_11_12\\SVD_Red_To_Neural_FRs")
+best_β, r2_test, r2_fullcut = fit_and_evaluate(SVD_R1, SVD_R4, Probe1_R1, Probe1_R4, LRCs, LRCs, λ_values, "Results\\TD13d_11_12\\SVD_To_Neural_FRs")
 
 """
 Section for testing SVD features to nerual PCs
 """
 
-fit_and_evaluate(SVD_R1_selected, SVD_R4_selected, PCA_P1_R1, PCA_P1_R4 , FCs, LRCs, λ_values, "Results\\TD13d_11_12\\SVD_Red_To_Neural_PCs")
-fit_and_evaluate(SVD_R1, SVD_R4, PCA_P1_R1, PCA_P1_R4 , FCs, LRCs, λ_values, "Results\\TD13d_11_12\\SVD_To_Neural_PCs")
+fit_and_evaluate(SVD_R1_selected, SVD_R4_selected, PCA_P1_R1, PCA_P1_R4 , LRCs, LRCs, λ_values, "Results\\TD13d_11_12\\SVD_Red_To_Neural_PCs")
+fit_and_evaluate(SVD_R1, SVD_R4, PCA_P1_R1, PCA_P1_R4 , LRCs, LRCs, λ_values, "Results\\TD13d_11_12\\SVD_To_Neural_PCs")
 
 """
 Section for testing KP Features to nerual FRs
@@ -108,7 +107,7 @@ end
 
 X = cat(KP_R1, KP_R4, dims=1)
 Y = cat(Probe1_R1, Probe1_R4, dims=1)
-fit_and_evaluate(KP_R1, KP_R4, Probe1_R1, Probe1_R4, FCs, LRCs, λ_values, "Results\\TD13d_11_12\\KP_To_Neural_FRs")
+fit_and_evaluate(KP_R1, KP_R4, Probe1_R1, Probe1_R4, LRCs, LRCs, λ_values, "Results\\TD13d_11_12\\KP_To_Neural_FRs")
 
 
 """
@@ -117,18 +116,12 @@ Section for testing KP Features to nerual PCs
 
 X = cat(KP_R1, KP_R4, dims=1)
 Y = cat(PCA_P1_R1, PCA_P1_R4, dims=1)
-fit_and_evaluate(KP_R1, KP_R4, PCA_P1_R1, PCA_P1_R4, FCs, LRCs, λ_values, "Results\\TD13d_11_12\\KP_To_Neural_PCs")
+fit_and_evaluate(KP_R1, KP_R4, PCA_P1_R1, PCA_P1_R4, LRCs, LRCs, λ_values, "Results\\TD13d_11_12\\KP_To_Neural_PCs")
 
 
 
 """
 ********************************* Sliding Window R2 Results SVD -> FRs
-"""
-
-
-
-"""
-SOMETHING IS WRONG. THE R2 Values are too low to make sense given the results from the fitting...
 """
 
 
@@ -230,6 +223,11 @@ function plot_grouped_r2_summary(r2_train::Vector{Float64},
 
     return p
 end
+
+
+
+
+
 
 
 # """
