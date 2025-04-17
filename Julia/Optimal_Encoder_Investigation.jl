@@ -23,8 +23,8 @@ Random.seed!(1234);
 const SSD = StateSpaceDynamics
 
 # path = "C:\\Users\\zachl\\OneDrive\\BU_YEAR1\\Research\\Tudor_Data\\Disengagement_Analysis_2025\\preprocessed_data\\TD13d_2024-11-13\\";  # Probe 2
-# path = "C:\\Research\\Encoder_Modeling\\Encoder_Analysis\\Processed_Encoder\\TD13d_2024-11-12\\";  # Probe 1
-path = "U:\\eng_research_economo2\\ZFL\\Disengagement_Encoder\\TD13d_2024-11-12\\"
+path = "C:\\Research\\Encoder_Modeling\\Encoder_Analysis\\Processed_Encoder\\TD13d_2024-11-12\\";  # Probe 1
+# path = "U:\\eng_research_economo2\\ZFL\\Disengagement_Encoder\\TD13d_2024-11-12\\"
 Probe1_R1, Probe2_R1, PCA_P1_R1, PCA_P2_R1, SVD_R1, KP_R1 = load_data_encoder(path, "R1");
 Probe1_R4, Probe2_R4, PCA_P1_R4, PCA_P2_R4, SVD_R4, KP_R4 = load_data_encoder(path, "R4");
 
@@ -75,19 +75,19 @@ Section for testing SVD features to nerual FRs
 SVD_R1_selected = [hcat(x[:, 1:20], x[:, 51:70]) for x in SVD_R1]
 SVD_R4_selected = [hcat(x[:, 1:20], x[:, 51:70]) for x in SVD_R4]
 
-X = cat(SVD_R1, SVD_R4, dims=1)
-Y = cat(Probe1_R1, Probe1_R4, dims=1)
 FCs = cat(FCs_R1, FCs_R4, dims=2)
 LRCs= cat(LRCs_R1, LRCs_R4, dims=1)
-λ_values = [0.0001, 0.001, 0.01, 0.1, 0.0, 1.0, 10.0, 100.0, 1000.0, 10000.0, 100000.0, 1000000.0, 10000000.0]
-fit_and_evaluate(SVD_R1, SVD_R4, Probe1_R1, Probe1_R4, FCs, LRCs, λ_values, "Results\\TD13d_11_12\\SVD_To_Neural_FRs")
+λ_values = 10 .^ range(-6, 10; length=100)
+
+best_β, r2_test, r2_fullcut = fit_and_evaluate(SVD_R1_selected, SVD_R4_selected, Probe1_R1, Probe1_R4, FCs, LRCs, λ_values, "Results\\TD13d_11_12\\SVD_Red_To_Neural_FRs")
+best_β, r2_test, r2_fullcut = fit_and_evaluate(SVD_R1, SVD_R4, Probe1_R1, Probe1_R4, FCs, LRCs, λ_values, "Results\\TD13d_11_12\\SVD_To_Neural_FRs")
+
 
 """
 Section for testing SVD features to nerual PCs
 """
 
-X = cat(SVD_R1, SVD_R4, dims=1)
-Y = cat(PCA_P1_R1, PCA_P1_R4, dims=1)
+fit_and_evaluate(SVD_R1_selected, SVD_R4_selected, PCA_P1_R1, PCA_P1_R4 , FCs, LRCs, λ_values, "Results\\TD13d_11_12\\SVD_Red_To_Neural_PCs")
 fit_and_evaluate(SVD_R1, SVD_R4, PCA_P1_R1, PCA_P1_R4 , FCs, LRCs, λ_values, "Results\\TD13d_11_12\\SVD_To_Neural_PCs")
 
 """
@@ -120,11 +120,20 @@ Y = cat(PCA_P1_R1, PCA_P1_R4, dims=1)
 fit_and_evaluate(KP_R1, KP_R4, PCA_P1_R1, PCA_P1_R4, FCs, LRCs, λ_values, "Results\\TD13d_11_12\\KP_To_Neural_PCs")
 
 
+
 """
 ********************************* Sliding Window R2 Results SVD -> FRs
 """
-results_folder = "Results/TD13d_11_12/SVD_To_Neural_FRs"
-R1_mean, R1_std = sliding_window_r2(SVD_R1_selected, Probe1_R1, results_folder, "R1")
+
+
+
+"""
+SOMETHING IS WRONG. THE R2 Values are too low to make sense given the results from the fitting...
+"""
+
+
+results_folder = "Results/TD13d_11_12/SVD_Red_To_Neural_FRs"
+R1_mean, R1_std = sliding_window_r2(SVD_R1_selected, Probe1_R1, FCs_R1, results_folder, "R1")
 R4_mean, R4_std = sliding_window_r2(SVD_R4_selected, Probe1_R4, results_folder, "R4")
 
 p = plot_sliding_window_r2(R1_mean, R1_std, R4_mean, R4_std)
@@ -133,7 +142,7 @@ savefig(p, joinpath(results_folder, "Sliding_Window_R2.png"))
 """
 Sliding Window R2 Results SVD -> PCs
 """
-results_folder = "Results/TD13d_11_12/SVD_To_Neural_PCs"
+results_folder = "Results/TD13d_11_12/SVD_Red_To_Neural_PCs"
 R1_mean, R1_std = sliding_window_r2(SVD_R1_selected, PCA_P1_R1, results_folder, "R1")
 R4_mean, R4_std = sliding_window_r2(SVD_R4_selected, PCA_P1_R4, results_folder, "R4")
 
@@ -162,36 +171,65 @@ savefig(p, joinpath(results_folder, "Sliding_Window_R2.png"))
 
 
 
+"""
+Snag the results from the server and put them here. then get the plots right
+"""
 
 
 
 
-_, λ, r2_train, r2_val, r2_test, r2_fullcut, _ = load_results_from_csv("Results\\TD13d_11_12\\SVD_To_Neural_FRs")
-plot_r2_summary(r2_train, r2_val, r2_test; best_r2_fullcut=r2_fullcut)
+
+_, λ_SVD_FRs, r2_train_SVD_FRs, r2_val_SVD_FRs, r2_test_SVD_FRs, r2_fullcut_SVD_FRs, _ = load_results_from_csv("Results\\TD13d_11_12\\SVD_To_Neural_FRs")
+_, λ_SVD_PCs, r2_train_SVD_PCs, r2_val_SVD_PCs, r2_test_SVD_PCs, r2_fullcut_SVD_PCs, _ = load_results_from_csv("Results\\TD13d_11_12\\SVD_To_Neural_PCs")
+_, λ_KP_FRs, r2_train_KP_FRs, r2_val_KP_FRs, r2_test_KP_FRs, r2_fullcut_KP_FRs, _ = load_results_from_csv("Results\\TD13d_11_12\\KP_To_Neural_FRs")
+_, λ_KP_PCs, r2_train_KP_PCs, r2_val_KP_PCs, r2_test_KP_PCs, r2_fullcut_KP_PCs, _ = load_results_from_csv("Results\\TD13d_11_12\\KP_To_Neural_PCs")
+
+_, λ_SVD_Select_FRs, r2_train_SVD_Select_FRs, r2_val_SVD_Select_FRs, r2_test_SVD_Select_FRs, r2_fullcut_SVD_Select_FRs, _ = load_results_from_csv("Results\\TD13d_11_12\\SVD_Red_To_Neural_FRs")
+_, λ_SVD_Select_PCs, r2_train_SVD_Select_PCs, r2_val_SVD_Select_PCs, r2_test_SVD_Select_PCs, r2_fullcut_SVD_Select_PCs, _ = load_results_from_csv("Results\\TD13d_11_12\\SVD_Red_To_Neural_PCs")
+
+
+labels = ["SVD -> FRs", "SVD -> PCs", "Red SVD -> FRs", "Red SVD -> PCs", "KP -> FRs", "KP -> PCs"]
+
+r2_train = [r2_train_SVD_FRs, r2_train_SVD_Select_FRs, r2_train_SVD_Select_PCs, r2_train_SVD_PCs, r2_train_KP_FRs, r2_train_KP_PCs]
+r2_val   = [r2_val_SVD_FRs, r2_val_SVD_Select_FRs, r2_val_SVD_Select_PCs, r2_val_SVD_PCs,   r2_val_KP_FRs,   r2_val_KP_PCs]
+r2_test  = [r2_test_SVD_FRs, r2_test_SVD_Select_FRs, r2_test_SVD_Select_PCs, r2_test_SVD_PCs,  r2_test_KP_FRs,  r2_test_KP_PCs]
+
+p = plot_grouped_r2_summary(r2_train, r2_val, r2_test, labels; title = "R² Comparison Across Models")
 
 
 
+function plot_grouped_r2_summary(r2_train::Vector{Float64}, 
+    r2_val::Vector{Float64}, 
+    r2_test::Vector{Float64}, 
+    labels::Vector{String}; 
+    title::String = "Grouped R² Summary")
+    # Number of models
+    n = length(labels)
 
-function plot_r2_summary(best_r2_train::Float64, best_r2_val::Float64, best_r2_test::Float64; best_r2_fullcut::Union{Nothing, Float64}=nothing)
-    labels = ["Train", "Validation", "Test"]
-    values = [best_r2_train, best_r2_val, best_r2_test]
+    # Create a DataFrame in long format.
+    # For each split we repeat all model labels.
+    # "Split" column: "Train", "Validation", "Test"
+    # "Model" column: the model name from labels.
+    # "R2" column: corresponding R² value.
+    split = repeat(["1. Train", "2. Validation", "3. Test"], inner = n)  # each split gets n entries
+    model = repeat(labels, outer = 3)                          # for each split, list models
+    R2 = vcat(r2_train, r2_val, r2_test)                        # stack the three vectors
 
-    if best_r2_fullcut !== nothing
-        push!(labels, "Full Cut")
-        push!(values, best_r2_fullcut)
-    end
+    df = DataFrame(Split = split, Model = model, R2 = R2)
 
-    bar(labels, values;
-        legend=false,
-        ylabel="R²",
-        title="Best R² Scores",
-        ylim=(0,1),
-        bar_width=0.6,
-        color=:steelblue,
-        framestyle=:box)
+    # Create a grouped bar plot.
+    p = groupedbar(df.Split, df.R2, group = df.Model,
+    xlabel = "Data Split", 
+    ylabel = "R²", 
+    title = title, 
+    legend = :topright,
+    bar_position = :dodge,
+    ylim = (0, 1),
+    palette = palette(:pastel)
+    )
+
+    return p
 end
-
-
 
 
 # """

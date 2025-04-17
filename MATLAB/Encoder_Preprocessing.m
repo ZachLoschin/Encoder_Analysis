@@ -23,7 +23,7 @@ params.alignEvent          = 'goCue'; % 'fourthLick' 'goCue'  'moveOnset'  'firs
 
 % time warping only operates on neural data for now.
 params.behav_only          = 0;
-params.timeWarp            = 1;  % piecewise linear time warping - each lick duration on each trial gets warped to median lick duration for that lick across trials
+params.timeWarp            = 0;  % piecewise linear time warping - each lick duration on each trial gets warped to median lick duration for that lick across trials
 params.nLicks              = 20; % number of post go cue licks to calculate median lick duration for and warp individual trials to
 
 params.lowFR               = 1; % remove clusters with firing rates across all trials less than this val
@@ -265,6 +265,41 @@ R1_SVD_Features_Cut = chop_and_stack_neural_data(R1_SVD_Features_mat_resampled, 
 R4_SVD_Features_Cut = chop_and_stack_neural_data(R4_SVD_Features_mat_resampled, LRCs_R4_clean, 100);
 
 
+% %% NORMALIZATION
+% % Concatenate across time and trials: reshape to [T*N x D]
+% R1_all = reshape(R1_SVD_Features_mat_resampled, [], size(R1_SVD_Features_mat_resampled, 2));
+% R4_all = reshape(R4_SVD_Features_mat_resampled, [], size(R4_SVD_Features_mat_resampled, 2));
+% 
+% % Compute global z-score parameters (shared across R1 & R4)
+% all_features = [R1_all; R4_all];  % [total_timepoints_across_all_trials x D]
+% feature_means = mean(all_features, 1);
+% feature_stds = std(all_features, 0, 1);
+% feature_stds(feature_stds == 0) = 1;  % avoid divide-by-zero
+% 
+% 
+% % Apply z-scoring
+% R1_SVD_Features_mat_z = zscore_trials(R1_SVD_Features_mat_resampled, feature_means, feature_stds);
+% R4_SVD_Features_mat_z = zscore_trials(R4_SVD_Features_mat_resampled, feature_means, feature_stds);
+% 
+% R1_SVD_Features_Cut = chop_and_stack_neural_data(R1_SVD_Features_mat_z, LRCs_R1_clean, 100);
+% R4_SVD_Features_Cut = chop_and_stack_neural_data(R4_SVD_Features_mat_z, LRCs_R4_clean, 100);
+% 
+% 
+% % All trials and timepoints from R1 and R4 stacked
+% R1_all = reshape(R1_SVD_Features_mat_resampled, [], size(R1_SVD_Features_mat_resampled, 2));
+% R4_all = reshape(R4_SVD_Features_mat_resampled, [], size(R4_SVD_Features_mat_resampled, 2));
+% 
+% % Compute global z-score stats
+% all_features = [R1_all; R4_all];
+% feature_means = mean(all_features, 1);
+% feature_stds = std(all_features, 0, 1);
+% feature_stds(feature_stds == 0) = 1;  % safeguard
+% 
+% % Normalize the uncut features
+% R1_SVD_Features_Uncut = (R1_SVD_Features_Uncut - feature_means) ./ feature_stds;
+% R4_SVD_Features_Uncut = (R4_SVD_Features_Uncut - feature_means) ./ feature_stds;
+
+
 %% Get the keypoints by trial
 R1_Keypoints_unfiltered = pos(101:end, :, R1_Trials);
 R4_Keypoints_unfiltered = pos(101:end, :, R4_Trials);
@@ -395,7 +430,7 @@ sessionDate = meta.date;
 % Construct the output folder path
 outputFolder = fullfile( ...
     'C:\Research\Encoder_Modeling\Encoder_Analysis\Processed_Encoder', ...
-    [sessionName '_' sessionDate 'TW']);
+    [sessionName '_' sessionDate]);
 
 % Create the output folder if it does not exist
 if ~exist(outputFolder, 'dir')
@@ -498,4 +533,11 @@ function zscored_data = zscore_pregc(data, pre_gc_points)
 
     % chop the data to the gc-1s to end
     zscored_data = zscored_data(pre_gc_points-100+1:end, :, :);
+end
+
+% Function to apply z-score normalization to each trial
+function normalized = zscore_trials(data, means, stds)
+    % data: [T x D x N]
+    sz = size(data);
+    normalized = (data - reshape(means, 1, [], 1)) ./ reshape(stds, 1, [], 1);
 end

@@ -49,46 +49,35 @@ function plot_sliding_window_r2(R1_mean, R1_std, R4_mean, R4_std; window_size=10
     return p
 end
 
-function sliding_window_r2(X, Y, results_folder::String, condition::String)
+function sliding_window_r2(X, Y, first_contacts, results_folder::String, condition::String)
     # Load best model parameters
-    validation_df, best_lambda, best_train2, best_valr2, best_testr2, best_beta = load_results_from_csv(results_folder)
+    validation_df, best_lambda, best_train2, best_valr2, best_testr2, bestr2_fullcut, best_beta = load_results_from_csv(results_folder)
 
     # Kernelize and trim data
     lags = 4
     X_ready = kernelize_past_features(X, lags)
     Y_ready = trim_Y_train_past(Y, lags)
 
-    # Setup model with best lambda and beta
-    input_dim = size(X_ready[1], 2)
-    output_dim = size(Y_ready[1], 2)
-    model = SSD.GaussianRegressionEmission(
-        input_dim=input_dim,
-        output_dim=output_dim,
-        include_intercept=true,
-        λ=best_lambda,
-    )
-    model.β .= best_beta
-
     # Sliding window parameters
-    window_size = 10
-    trial_len = size(X_ready[1], 1)
-    num_windows = fld(trial_len, window_size)
+    window_size = 5
+    num_windows = 5  # for example, you can adjust this
 
     r2_per_window = Float64[]  # To store mean R² for each window
     r2_per_window_std = Float64[]  # To store std of R² for each window
 
-    for w in 1:num_windows
-        idx_start = (w - 1) * window_size + 1
-        idx_end = w * window_size
-
+    for w in 0:num_windows-1
         r2_values_per_trial = Float64[]
 
         for i in 1:length(X_ready)
+            fc = first_contacts[i] - lags  # adjust for lag trimming
+            idx_start = fc + w * window_size + 1
+            idx_end = fc + (w + 1) * window_size
+
             X_trial = X_ready[i]
             Y_trial = Y_ready[i]
 
-            # Skip trials that are too short
-            if size(X_trial, 1) < idx_end
+            # Skip if trial is too short or FC is too early
+            if idx_start < 1 || idx_end > size(X_trial, 1)
                 continue
             end
 
@@ -96,7 +85,7 @@ function sliding_window_r2(X, Y, results_folder::String, condition::String)
             Y_win = Y_trial[idx_start:idx_end, :]
 
             x_with_intercept = hcat(ones(size(X_win, 1)), X_win)
-            Y_pred = x_with_intercept * model.β
+            Y_pred = x_with_intercept * best_beta
 
             push!(r2_values_per_trial, r2_score(Y_win, Y_pred))
         end
@@ -110,11 +99,8 @@ function sliding_window_r2(X, Y, results_folder::String, condition::String)
     results_df = DataFrame(Window=1:num_windows, Mean_R2=r2_per_window, Std_R2=r2_per_window_std)
     CSV.write(result_filename, results_df)
 
-    println("R² results saved to: $result_filename")
-
     return r2_per_window, r2_per_window_std
 end
-
 
 
 # Define the function to perform the fitting loop
@@ -217,8 +203,64 @@ function fit_and_evaluate_dis(X_r1, X_r4, Y_r1, Y_r4, LRCs, λ_values, save_fold
 
 end
 
+function testing_fit(
+    X_r1, X_r4, Y_r1, Y_r4,
+    FCs, LRCs, λ_values,
+    save_folder::String;
+)
+    if !isdir(save_folder)
+        mkdir(save_folder)
+    end
 
-function fit_and_evaluate(
+    lags = 4
+    function preprocess(X, Y, FCs)
+        X_cut = Vector{Matrix{Float64}}(undef, length(X))
+        Y_cut = Vector{Matrix{Float64}}(undef, length(Y))
+        for i in 1:length(X)
+            len = FCs[i]
+            X_cut[i] = X[i][97:len, :]
+            Y_cut[i] = Y[i][97:len, :]
+        end
+        X_ready = kernelize_past_features(X_cut, lags)
+        Y_ready = trim_Y_train_past(Y_cut, lags)
+        return X_ready, Y_ready
+    end
+
+    # Standard FC cuts
+    X_r1_ready, Y_r1_ready = preprocess(X_r1, Y_r1, FCs[1:length(X_r1)])
+    X_r4_ready, Y_r4_ready = preprocess(X_r4, Y_r4, FCs[length(X_r1)+1:end])
+
+    # Train/val/test split
+    X_train, Y_train, X_val, Y_val, X_test, Y_test = stratified_train_val_test_split(
+        X_r1_ready, Y_r1_ready, X_r4_ready, Y_r4_ready
+    )
+
+    # Concatenate data
+    X_train_cat = vcat(X_train...)
+    y_train_cat = vcat(Y_train...)
+    X_test_cat = vcat(X_test...)
+    y_test_cat = vcat(Y_test...)
+    x_val_cat = vcat(X_val...)
+    y_val_cat = vcat(Y_val...)
+
+    X_val_with_intercept = hcat(ones(size(x_val_cat, 1)), x_val_cat)
+
+    β = ridge(X_train_cat, y_train_cat, 1e10)
+    p1 =  x_val_cat * β[2:end, :]
+    intercept = repeat(β[1, :]', size(x_val_cat, 1), 1)
+    y_val_pred = x_val_cat * β[2:end, :] .+ intercept
+
+    print(p1[1:10, 1:2])
+    println()
+    print(y_val_pred[1:10, 1:2])
+    println()
+    print(intercept[1:10, 1:2])
+
+    r2_val = r2_score(y_val_cat, y_val_pred)
+    println(r2_val)
+end
+
+function fit_and_evaluate_ssd(
     X_r1, X_r4, Y_r1, Y_r4,
     FCs, LRCs, λ_values,
     save_folder::String;
@@ -325,104 +367,12 @@ function fit_and_evaluate(
     return best_model, r2_test, r2_fullcut
 end
 
-
-
-# function fit_and_evaluate(X_r1, X_r4, Y_r1, Y_r4, FCs, λ_values, save_folder::String)
-#     # Check if the save folder exists, if not, create it
-#     if !isdir(save_folder)
-#         mkdir(save_folder)
-#     end
-
-#     # Chop to GC-to-FC time and kernelize all R1 and R4 data
-#     lags = 4
-#     function preprocess(X, Y, FCs)
-#         X_cut = Vector{Matrix{Float64}}(undef, length(X))
-#         Y_cut = Vector{Matrix{Float64}}(undef, length(Y))
-#         for i in 1:length(X)
-#             len = FCs[i]
-#             X_cut[i] = X[i][97:len, :]
-#             Y_cut[i] = Y[i][97:len, :]
-#         end
-#         X_ready = kernelize_past_features(X_cut, lags)
-#         Y_ready = trim_Y_train_past(Y_cut, lags)
-#         return X_ready, Y_ready
-#     end
-
-#     X_r1_ready, Y_r1_ready = preprocess(X_r1, Y_r1, FCs[1:length(X_r1)])
-#     X_r4_ready, Y_r4_ready = preprocess(X_r4, Y_r4, FCs[length(X_r1)+1:end])
-
-#     # Stratified train/val/test split
-#     X_train, Y_train, X_val, Y_val, X_test, Y_test = stratified_train_val_test_split(
-#         X_r1_ready, Y_r1_ready, X_r4_ready, Y_r4_ready)
-
-#     # Prepare data for training and validation
-#     X_train_cat = vcat(X_train...)
-#     y_train_cat = vcat(Y_train...)
-#     X_test_cat = vcat(X_test...)
-#     y_test_cat = vcat(Y_test...)
-#     x_val_cat = vcat(X_val...)
-#     y_val_cat = vcat(Y_val...)
-#     X_val_with_intercept = hcat(ones(size(x_val_cat, 1)), x_val_cat)
-
-#     # Initialize results list
-#     results = []  
-
-#     for λ in λ_values
-#         println("Evaluating λ: ", λ)
-
-#         # Initialize and fit the model
-#         encoder_model = SSD.GaussianRegressionEmission(
-#             input_dim = size(X_train[1], 2),
-#             output_dim = size(Y_train[1], 2),
-#             include_intercept = true,
-#             λ = λ
-#         )
-#         SSD.fit!(encoder_model, X_train_cat, y_train_cat)
-
-#         # Predict on validation set
-#         y_val_pred = X_val_with_intercept * encoder_model.β
-#         r2_val = r2_score(y_val_cat, y_val_pred)
-
-#         # Predict on training set
-#         x_train_with_intercept = hcat(ones(size(X_train_cat, 1)), X_train_cat)
-#         y_train_pred = x_train_with_intercept * encoder_model.β
-#         r2_train = r2_score(y_train_cat, y_train_pred)
-
-#         # Store result
-#         push!(results, (λ = λ, r2_train = r2_train, r2_val = r2_val, β = copy(encoder_model.β)))
-#     end
-
-#     # Pick best λ and set up best model
-#     r2_values = [result.r2_val for result in results]
-#     best_index = argmax(r2_values)
-#     best_beta = results[best_index].β
-#     best_lambda = results[best_index].λ
-
-#     best_encoder_model = SSD.GaussianRegressionEmission(
-#         input_dim = size(X_train[1], 2),
-#         output_dim = size(Y_train[1], 2),
-#         include_intercept = true,
-#         λ = best_lambda
-#     )
-#     best_encoder_model.β .= best_beta
-
-#     # Predict and evaluate on test set
-#     x_test_with_intercept = hcat(ones(size(X_test_cat, 1)), X_test_cat)
-#     y_test_pred = x_test_with_intercept * best_encoder_model.β
-#     r2_test = r2_score(y_test_cat, y_test_pred)
-
-#     println("R² on test set: ", r2_test)
-
-#     # Save results
-#     save_results_to_csv(results, best_index, best_lambda, best_beta, r2_test, save_folder)
-# end
-
-
 function r2_score(y_true, y_pred)
     ss_res = sum((y_true .- y_pred).^2)
     ss_tot = sum((y_true .- mean(y_true, dims=1)).^2)
     return 1 - (ss_res / ss_tot)
 end
+
 function load_results_from_csv(folder_path::String)
     # Load the validation results
     validation_file = joinpath(folder_path, "validation_results.csv")
