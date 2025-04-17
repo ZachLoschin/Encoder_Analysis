@@ -73,9 +73,13 @@ ylabel!("Log-Likelihood")
 """
 Plot the trial averaged inference
 """
+
+SVD_R1_selected = [hcat(x[97:end, 1:20], x[97:end, 51:70]) for x in SVD_R1]
+SVD_R4_selected = [hcat(x[97:end, 1:20], x[97:end, 51:70]) for x in SVD_R4]
+
 # Get the uncut data labeling and averaging
-X_R1 = [X[97:300,:] for X in SVD_R1]
-X_R4 = [X[97:300,:] for X in SVD_R4]
+X_R1 = [X[97:300,:] for X in SVD_R1_selected]
+X_R4 = [X[97:300,:] for X in SVD_R4_selected]
 
 Y_R1 = [Y[97:300,:] for Y in PCA_P1_R1]
 Y_R4 = [Y[97:300,:] for Y in PCA_P1_R4]
@@ -89,8 +93,14 @@ Y_R4_trimmed = trim_Y_train_past(Y_R4, 4)
 YY = permutedims.(Y_R1_trimmed)
 XX = permutedims.(X_R1_kernel)
 
-FB_R1 = label_data(model, Y_R1_trimmed, X_R1_kernel);
-FB_R4 = label_data(model, Y_R4_trimmed, X_R4_kernel);
+YY_R4 = permutedims.(Y_R4_trimmed)
+XX_R4 = permutedims.(X_R4_kernel)
+
+
+
+
+FB_R1 = label_data(model, YY, XX);
+FB_R4 = label_data(model, YY_R4, XX_R4);
 
 # Extract γ[1, :] for each K in OO
 γ_vectors_R1 = [FB_R1[K].γ[1, :] for K in eachindex(FB_R1)]

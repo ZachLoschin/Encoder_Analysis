@@ -45,7 +45,7 @@ function fit_custom!(
         SSD.aggregate_forward_backward!(Aggregate_FB_storage, FB_storage_vec)
 
         # Calculate log_likelihood
-        log_likelihood_current = SSD.logsumexp(Aggregate_FB_storage.α[:, end])
+        log_likelihood_current = sum([SSD.logsumexp(FB_vec.α[:, end]) / size(FB_vec.α, 2) for FB_vec in FB_storage_vec])
         push!(lls, log_likelihood_current)
 
         # Check for convergence
@@ -65,8 +65,20 @@ function fit_custom!(
     return lls
 end
 
+function update_transition_matrix!(
+    model::SSD.AbstractHMM, FB_storage_vec::Vector{SSD.ForwardBackward{Float64}}
+)
+    for j in 1:(model.K)
+        for k in 1:(model.K)
+            num = exp(SSD.logsumexp(vcat([FB_trial.ξ[j, k, :] for FB_trial in FB_storage_vec]...)))
+            denom = exp.(SSD.logsumexp(vcat([FB_trial.ξ[j, :, :]' for FB_trial in FB_storage_vec]...)))  # this logsumexp takes care of both sums in denom
+            model.A[j,k] = num / denom
+        end
+    end
+end
+
+
 function SSD.update_emissions!(model::SSD.AbstractHMM, FB_storage::SSD.ForwardBackward, data)
-    println("Custom update emissions")
     # update regression models
     w = exp.(permutedims(FB_storage.γ))
 
@@ -74,7 +86,6 @@ function SSD.update_emissions!(model::SSD.AbstractHMM, FB_storage::SSD.ForwardBa
 
     # check threading speed here
     for k in 1:(model.K)
-        println("Model: ", k)
         β = weighted_ridge_regression(data..., model.B[1].λ, w=w[:,k])
         model.B[k].β = β
     end
@@ -993,19 +1004,25 @@ function chop_Y(Yvec::Vector{Matrix{Float64}}, kernel_size::Int)
     return new_Yvec
 end
 
-function label_data(model, Y, X)
+function label_data(model, Y::Vector{<:Matrix{<:Real}}, X::Union{Vector{<:Matrix{<:Real}}, Nothing}=nothing)
     data = X === nothing ? (Y,) : (X, Y)
-    
-    # Transform each matrix in each tuple to the correct orientation
-    transposed_matrices = map(data_tuple -> Matrix.(transpose.(data_tuple)), data)
-    zipped_matrices = collect(zip(transposed_matrices...))
-    total_obs = sum(size(trial_mat[1], 1) for trial_mat in zipped_matrices)
 
-    FB_storage_vec = [SSD.initialize_forward_backward(model, size(trial_tuple[1],1)) for trial_tuple in zipped_matrices]
+    # Transpose each matrix to shape (features × timepoints)
+    transposed_matrices = map(data_tuple -> Matrix.(transpose.(data_tuple)), data)
+    zipped_matrices = collect(zip(transposed_matrices...))  # Vector of tuples: (Xᵀ, Yᵀ)
+
+    total_obs = sum(size(trial_tuple[1], 1) for trial_tuple in zipped_matrices)
+
+    # Allocate ForwardBackward storage
+    FB_storage_vec = [SSD.initialize_forward_backward(model, size(trial_tuple[1], 1)) for trial_tuple in zipped_matrices]
     Aggregate_FB_storage = SSD.initialize_forward_backward(model, total_obs)
+
+    # Run E-step
     SSD.estep!.(Ref(model), zipped_matrices, FB_storage_vec)
+
     return FB_storage_vec
 end
+
 
 function FB_heatmap(FB_storage)
     # Number of trials
