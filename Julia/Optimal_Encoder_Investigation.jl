@@ -166,9 +166,30 @@ savefig(p, joinpath(results_folder, "Sliding_Window_R2.png"))
 
 
 
+_, λ, r2_train, r2_val, r2_test, r2_fullcut, _ = load_results_from_csv("Results\\TD13d_11_12\\SVD_To_Neural_FRs")
+plot_r2_summary(r2_train, r2_val, r2_test; best_r2_fullcut=r2_fullcut)
 
 
 
+
+function plot_r2_summary(best_r2_train::Float64, best_r2_val::Float64, best_r2_test::Float64; best_r2_fullcut::Union{Nothing, Float64}=nothing)
+    labels = ["Train", "Validation", "Test"]
+    values = [best_r2_train, best_r2_val, best_r2_test]
+
+    if best_r2_fullcut !== nothing
+        push!(labels, "Full Cut")
+        push!(values, best_r2_fullcut)
+    end
+
+    bar(labels, values;
+        legend=false,
+        ylabel="R²",
+        title="Best R² Scores",
+        ylim=(0,1),
+        bar_width=0.6,
+        color=:steelblue,
+        framestyle=:box)
+end
 
 
 
