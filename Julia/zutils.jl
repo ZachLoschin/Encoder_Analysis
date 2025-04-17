@@ -436,7 +436,7 @@ function load_results_from_csv(folder_path::String)
     best_r2_train = best_results_df.R2_Train_Best[1]
     best_r2_val = best_results_df.R2_Validation_Best[1]
     best_r2_test = best_results_df.R2_Test_Best[1]
-    best_r2_fullcut = best_results_df.R2_FullCut_Best[1]
+    best_r2_fullcut = best_results_df.R2_Fullcut[1]
     println("Loaded best lambda and performance metrics from $best_results_file")
 
     # Load the best betas and reshape them
