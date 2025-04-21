@@ -9,13 +9,14 @@
 % Read in the data, construct heatmap, overlay lick kinematics
 clear;
 clc;
+close all
 %% Import the state inference and tongue data
 
-R1_States = readmatrix("C:\Users\zachl\OneDrive\BU_YEAR1\Research\Tudor_Data\Disengagement_Analysis_2025\HMM_GLM_Fitting\Lab_Meeting_April\TD13d_11_13\R1_States_Enc.csv");  % Load the R1_States matrix
-R4_States = readmatrix("C:\Users\zachl\OneDrive\BU_YEAR1\Research\Tudor_Data\Disengagement_Analysis_2025\HMM_GLM_Fitting\Lab_Meeting_April\TD13d_11_13\R4_States_Enc.csv");  % Load the R4_States matrix
-R1_Tongue = readmatrix("C:\Users\zachl\OneDrive\BU_YEAR1\Research\Tudor_Data\Disengagement_Analysis_2025\HMM_GLM_Fitting\Lab_Meeting_April\TD13d_11_13\R1_Tongue_Enc.csv");
-R4_Tongue = readmatrix("C:\Users\zachl\OneDrive\BU_YEAR1\Research\Tudor_Data\Disengagement_Analysis_2025\HMM_GLM_Fitting\Lab_Meeting_April\TD13d_11_13\R4_Tongue_Enc.csv");
-% 
+R1_States = readmatrix("C:\Research\Encoder_Modeling\Encoder_Analysis\Results\TD15d_11_26\SVD_Red_To_Neural_PCs\R1_States_Reg.csv");  % Load the R1_States matrix
+R4_States = readmatrix("C:\Research\Encoder_Modeling\Encoder_Analysis\Results\TD15d_11_26\SVD_Red_To_Neural_PCs\R4_States_Reg.csv");  % Load the R4_States matrix
+R1_Tongue = readmatrix("C:\Research\Encoder_Modeling\Encoder_Analysis\Results\TD15d_11_26\SVD_Red_To_Neural_PCs\R1_Tongue_Reg.csv");
+R4_Tongue = readmatrix("C:\Research\Encoder_Modeling\Encoder_Analysis\Results\TD15d_11_26\SVD_Red_To_Neural_PCs\R4_Tongue_Reg.csv");
+% close all
 % R1_Tongue = R1_Tongue';
 % R4_Tongue = R4_Tongue';
 
@@ -94,7 +95,7 @@ text(-13, size(R4_Tongue, 2) + 2, 'R1', 'FontSize', 12, 'Color', "k");
 text(-13, size(R4_Tongue, 2) - 2, 'R4', 'FontSize', 12, 'Color', "k");
 
 % Set axes limits and labels
-set(gca, 'YTick', 0:10:220);
+set(gca, 'YTick', 0:10:260);
 xlabel('Time (s)');
 ylabel('Trial Number');
 

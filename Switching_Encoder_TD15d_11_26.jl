@@ -23,7 +23,7 @@ Random.seed!(1234);
 const SSD = StateSpaceDynamics
 
 # path = "C:\\Users\\zachl\\OneDrive\\BU_YEAR1\\Research\\Tudor_Data\\Disengagement_Analysis_2025\\preprocessed_data\\TD13d_2024-11-13\\";  # Probe 2
-path = "C:\\Research\\Encoder_Modeling\\Encoder_Analysis\\Processed_Encoder\\TD13d_2024-11-12\\";  # Probe 1
+path = "C:\\Research\\Encoder_Modeling\\Encoder_Analysis\\Processed_Encoder\\TD15d_2024-11-26\\";  # Probe 1
 # path = "U:\\eng_research_economo2\\ZFL\\Disengagement_Encoder\\TD13d_2024-11-12\\"
 Probe1_R1, Probe2_R1, PCA_P1_R1, PCA_P2_R1, SVD_R1, KP_R1 = load_data_encoder(path, "R1");
 Probe1_R4, Probe2_R4, PCA_P1_R4, PCA_P2_R4, SVD_R4, KP_R4 = load_data_encoder(path, "R4");
@@ -33,7 +33,7 @@ Probe1_R4_Cut, Probe2_R4_Cut, PCA_P1_R4_Cut, PCA_P2_R4_Cut, SVD_R4_Cut, KP_R4_Cu
 
 
 # Load the data
-_, λ_SVD_FRs, r2_train_SVD_FRs, r2_val_SVD_FRs, r2_test_SVD_FRs, r2_fullcut_SVD_FRs, best_β = load_results_from_csv("Results\\TD13d_11_12_FC_FIT\\SVD_Red_To_Neural_FRs")
+_, λ_SVD_FRs, r2_train_SVD_FRs, r2_val_SVD_FRs, r2_test_SVD_FRs, r2_fullcut_SVD_FRs, best_β = load_results_from_csv("Results\\TD15d_11_26\\SVD_Red_To_Neural_FRs")
 
 # Assuming KP_R1 is a vector of matrices
 for i in 1:length(KP_R1)
@@ -159,7 +159,7 @@ R4_States_df = DataFrame(R4_States, :auto)
 R1_States_df = DataFrame(R1_States, :auto)
 
 # Write DataFrames to CSV without headers
-CSV.write(joinpath("Results\\TD13d_11_12_FC_FIT\\SVD_Red_To_Neural_FRs" , "R4_Tongue_Reg.csv"), R4_Tongue_df; header=false)
-CSV.write(joinpath("Results\\TD13d_11_12_FC_FIT\\SVD_Red_To_Neural_FRs"  , "R1_Tongue_Reg.csv"), R1_Tongue_df; header=false)
-CSV.write(joinpath("Results\\TD13d_11_12_FC_FIT\\SVD_Red_To_Neural_FRs"  , "R4_States_Reg.csv"), R4_States_df; header=false)
-CSV.write(joinpath("Results\\TD13d_11_12_FC_FIT\\SVD_Red_To_Neural_FRs"  , "R1_States_Reg.csv"), R1_States_df; header=false)
+CSV.write(joinpath("Results\\TD15d_11_26\\SVD_Red_To_Neural_FRs" , "R4_Tongue_Reg.csv"), R4_Tongue_df; header=false)
+CSV.write(joinpath("Results\\TD15d_11_26\\SVD_Red_To_Neural_FRs"  , "R1_Tongue_Reg.csv"), R1_Tongue_df; header=false)
+CSV.write(joinpath("Results\\TD15d_11_26\\SVD_Red_To_Neural_FRs"  , "R4_States_Reg.csv"), R4_States_df; header=false)
+CSV.write(joinpath("Results\\TD15d_11_26\\SVD_Red_To_Neural_FRs"  , "R1_States_Reg.csv"), R1_States_df; header=false)

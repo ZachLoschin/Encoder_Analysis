@@ -79,13 +79,13 @@ for sessix = 1:numel(meta)
 end
 
 %% Check if video features for SVD have same lengths in obj.me
-folderPath = 'C:\Research\Encoder_Modeling\Encoder_Analysis\Data\video_data\TD13d\2024-11-12\cam1';
+folderPath = 'C:\Research\Encoder_Modeling\Encoder_Analysis\Data\video_data\TD15d\2024-11-26\cam1';
 [frameCounts, mismatchFlags] = checkVideoFrameCounts(folderPath, obj);
 
 
 %% Import the Facemap object and extract SVD features
 % Load facemap processed files
-SVD_feats_cam0_struct = load('C:\Research\Encoder_Modeling\Encoder_Analysis\Data\SVD_features\FaceMap_Processed\Cam0_TD13d_2024-11-12_cam_0_date_2024_11_12_time_17_49_00_v001_proc.mat');
+SVD_feats_cam0_struct = load('C:\Research\Encoder_Modeling\Encoder_Analysis\Data\SVD_features\FaceMap_Processed\TD15d_11_26\Cam0_TD15d_2024-11-26_cam_0_date_2024_11_26_time_15_55_47_v001_proc.mat');
 % SVD_feats_cam1_struct = load('C:\Research\Encoder_Modeling\Encoder_Analysis\Data\SVD_features\FaceMap_Processed\Cam1_TD13d_2024-11-12_cam_1_date_2024_11_12_time_17_49_00_v001_proc.mat');
 
 % Extract features
@@ -104,12 +104,30 @@ cam_framerate = 400;
 trialFeatures = cell(length(frameCounts), 1);
 t = [];
 startIdx = 1;
+
 for i = 1:length(frameCounts)
+    disp(i)
     endIdx = startIdx + frameCounts(i) - 1;
+
+    % Handle off-by-one issue if endIdx exceeds SVD_features
+    if endIdx > size(SVD_features, 1)
+        warning('Frame count for trial %d exceeds available SVD data. Trimming last frame.', i);
+        endIdx = size(SVD_features, 1);
+    end
+
+    % Check if slice is one longer than it should be
+    actualLength = endIdx - startIdx + 1;
+    expectedLength = frameCounts(i);
+    if actualLength > expectedLength
+        endIdx = endIdx - 1;  % Trim the last frame
+        warning('Trial %d: Trimming last frame to match frameCounts.', i);
+    end
+
     trialFeatures{i} = SVD_features(startIdx:endIdx, :);
     t = [t, size(trialFeatures{i}, 1) / cam_framerate];
     startIdx = endIdx + 1;
 end
+
 
 
 %% Get kinematic data
@@ -155,8 +173,8 @@ R1_Trials = params.trialid{8};
 R4_Trials = params.trialid{9};
 
 % Filter Tongue Length
-R1_Tongue = all_length(pre_gc_points-100+1:end, R1_Trials);  % -1s through 4s (500 points)
-R4_Tongue = all_length(pre_gc_points-100+1:end, R4_Trials);
+R1_Tongue = all_length((pre_gc_points-100+1):end, R1_Trials);  % -1s through 4s (500 points)
+R4_Tongue = all_length((pre_gc_points-100+1):end, R4_Trials);
 
 % Filter LP Contacts
 R1_Contacts = all_contacts(R1_Trials);  % these contacts are relative to the gc

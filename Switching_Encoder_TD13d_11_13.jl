@@ -22,18 +22,24 @@ Random.seed!(1234);
 
 const SSD = StateSpaceDynamics
 
-# path = "C:\\Users\\zachl\\OneDrive\\BU_YEAR1\\Research\\Tudor_Data\\Disengagement_Analysis_2025\\preprocessed_data\\TD13d_2024-11-13\\";  # Probe 2
-path = "C:\\Research\\Encoder_Modeling\\Encoder_Analysis\\Processed_Encoder\\TD13d_2024-11-12\\";  # Probe 1
-# path = "U:\\eng_research_economo2\\ZFL\\Disengagement_Encoder\\TD13d_2024-11-12\\"
-Probe1_R1, Probe2_R1, PCA_P1_R1, PCA_P2_R1, SVD_R1, KP_R1 = load_data_encoder(path, "R1");
-Probe1_R4, Probe2_R4, PCA_P1_R4, PCA_P2_R4, SVD_R4, KP_R4 = load_data_encoder(path, "R4");
+"""
+Note that the names of the imported data are swapped right no because this session requires probe 2 data to be analyzed. So below Probe 11 
+is probe 1 and probe1 is acutally Probe2_R1. I will write a general function later that cleans this up.
+"""
 
-Probe1_R1_Cut, Probe2_R1_Cut, PCA_P1_R1_Cut, PCA_P2_R1_Cut, SVD_R1_Cut, KP_R1_Cut, FCs_R1, LRCs_R1, Tongue_mat_R1  = load_data_encoder_cut(path, "R1");
-Probe1_R4_Cut, Probe2_R4_Cut, PCA_P1_R4_Cut, PCA_P2_R4_Cut, SVD_R4_Cut, KP_R4_Cut, FCs_R4, LRCs_R4, Tongue_mat_R4  = load_data_encoder_cut(path, "R4");
+
+# path = "C:\\Users\\zachl\\OneDrive\\BU_YEAR1\\Research\\Tudor_Data\\Disengagement_Analysis_2025\\preprocessed_data\\TD13d_2024-11-13\\";  # Probe 2
+path = "C:\\Research\\Encoder_Modeling\\Encoder_Analysis\\Processed_Encoder\\TD13d_2024-11-13\\";  # Probe 2
+# path = "U:\\eng_research_economo2\\ZFL\\Disengagement_Encoder\\TD13d_2024-11-12\\"
+Probe11_R2, Probe1_R1, PCA_P11_R1, PCA_P1_R1, SVD_R1, KP_R1 = load_data_encoder(path, "R1");
+Probe11_R4, Probe1_R4, PCA_P11_R4, PCA_P1_R4, SVD_R4, KP_R4 = load_data_encoder(path, "R4");
+
+Probe11_R1_Cut, Probe1_R1_Cut, PCA_P11_R1_Cut, PCA_P1_R1_Cut, SVD_R1_Cut, KP_R1_Cut, FCs_R1, LRCs_R1, Tongue_mat_R1  = load_data_encoder_cut(path, "R1");
+Probe11_R4_Cut, Probe1_R4_Cut, PCA_P11_R4_Cut, PCA_P1_R4_Cut, SVD_R4_Cut, KP_R4_Cut, FCs_R4, LRCs_R4, Tongue_mat_R4  = load_data_encoder_cut(path, "R4");
 
 
 # Load the data
-_, λ_SVD_FRs, r2_train_SVD_FRs, r2_val_SVD_FRs, r2_test_SVD_FRs, r2_fullcut_SVD_FRs, best_β = load_results_from_csv("Results\\TD13d_11_12_FC_FIT\\SVD_Red_To_Neural_FRs")
+_, λ_SVD_FRs, r2_train_SVD_FRs, r2_val_SVD_FRs, r2_test_SVD_FRs, r2_fullcut_SVD_FRs, best_β = load_results_from_csv("Results\\TD13d_11_13\\SVD_Red_To_Neural_FRs")
 
 # Assuming KP_R1 is a vector of matrices
 for i in 1:length(KP_R1)
@@ -103,11 +109,11 @@ SVD_R1_selected = [hcat(x[97:end, 1:20], x[97:end, 51:70]) for x in SVD_R1]
 SVD_R4_selected = [hcat(x[97:end, 1:20], x[97:end, 51:70]) for x in SVD_R4]
 
 # Get the uncut data labeling and averaging
-X_R1 = [X[97:300,:] for X in SVD_R1_selected]
-X_R4 = [X[97:300,:] for X in SVD_R4_selected]
+X_R1 = [X[97:200,:] for X in SVD_R1_selected]
+X_R4 = [X[97:200,:] for X in SVD_R4_selected]
 
-Y_R1 = [Y[97:300,:] for Y in Probe1_R1]
-Y_R4 = [Y[97:300,:] for Y in Probe1_R4]
+Y_R1 = [Y[97:200,:] for Y in Probe1_R1]
+Y_R4 = [Y[97:200,:] for Y in Probe1_R4]
 
 X_R1_kernel = kernelize_past_features(X_R1, 4)
 X_R4_kernel = kernelize_past_features(X_R4, 4)
@@ -140,8 +146,8 @@ title!("State Inference")
 ylabel!("State Probability")
 xlabel!("Time")
 
-Tongue_R1 = Tongue_mat_R1[97:300, :];
-Tongue_R4 = Tongue_mat_R4[97:300, :];
+Tongue_R1 = Tongue_mat_R1[101:200, :];
+Tongue_R4 = Tongue_mat_R4[101:200, :];
 
 # Save the data to export to MATLAB figure making
 R4_Tongue = permutedims(hcat(Tongue_R4...))
@@ -149,17 +155,13 @@ R1_Tongue = permutedims(hcat(Tongue_R1...))
 R4_States = permutedims(hcat(γ_vectors_R4...))
 R1_States = permutedims(hcat(γ_vectors_R1...))
 
-# Convert matrices to DataFrames, using :auto for column names (if you don't want specific column names)
-Tongue_R4 = Tongue_R4[1:200, :];
-Tongue_R1 = Tongue_R1[1:200, :];
-
 R4_Tongue_df = DataFrame(permutedims(Tongue_R4), :auto)
 R1_Tongue_df = DataFrame(permutedims(Tongue_R1), :auto)
 R4_States_df = DataFrame(R4_States, :auto)
 R1_States_df = DataFrame(R1_States, :auto)
 
 # Write DataFrames to CSV without headers
-CSV.write(joinpath("Results\\TD13d_11_12_FC_FIT\\SVD_Red_To_Neural_FRs" , "R4_Tongue_Reg.csv"), R4_Tongue_df; header=false)
-CSV.write(joinpath("Results\\TD13d_11_12_FC_FIT\\SVD_Red_To_Neural_FRs"  , "R1_Tongue_Reg.csv"), R1_Tongue_df; header=false)
-CSV.write(joinpath("Results\\TD13d_11_12_FC_FIT\\SVD_Red_To_Neural_FRs"  , "R4_States_Reg.csv"), R4_States_df; header=false)
-CSV.write(joinpath("Results\\TD13d_11_12_FC_FIT\\SVD_Red_To_Neural_FRs"  , "R1_States_Reg.csv"), R1_States_df; header=false)
+CSV.write(joinpath("Results\\TD13d_11_13\\SVD_Red_To_Neural_FRs" , "R4_Tongue_Reg.csv"), R4_Tongue_df; header=false)
+CSV.write(joinpath("Results\\TD13d_11_13\\SVD_Red_To_Neural_FRs"  , "R1_Tongue_Reg.csv"), R1_Tongue_df; header=false)
+CSV.write(joinpath("Results\\TD13d_11_13\\SVD_Red_To_Neural_FRs"  , "R4_States_Reg.csv"), R4_States_df; header=false)
+CSV.write(joinpath("Results\\TD13d_11_13\\SVD_Red_To_Neural_FRs"  , "R1_States_Reg.csv"), R1_States_df; header=false)
