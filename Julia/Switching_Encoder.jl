@@ -32,8 +32,76 @@ Probe1_R1_Cut, Probe2_R1_Cut, PCA_P1_R1_Cut, PCA_P2_R1_Cut, SVD_R1_Cut, KP_R1_Cu
 Probe1_R4_Cut, Probe2_R4_Cut, PCA_P1_R4_Cut, PCA_P2_R4_Cut, SVD_R4_Cut, KP_R4_Cut, FCs_R4, LRCs_R4, Tongue_mat_R4  = load_data_encoder_cut(path, "R4");
 
 
-# Load the data
-_, λ_SVD_FRs, r2_train_SVD_FRs, r2_val_SVD_FRs, r2_test_SVD_FRs, r2_fullcut_SVD_FRs, best_β = load_results_from_csv("Results\\TD13d_11_12_FC_FIT\\SVD_Red_To_Neural_FRs")
+"""
+Verify data
+"""
+
+# Check uncut neural data and features
+P1_R1_Ave = ave_vector(Probe1_R1)
+P1_R4_Ave = ave_vector(Probe1_R4)
+plot(P1_R1_Ave, label="R1 Uncut Ave")
+plot!(P1_R4_Ave, label="R4 Uncut Ave")
+title!("Uncut Population Average")
+
+# Stack trials into a 3D array: 600 (time) x 12 (PCs) x N_trials
+PCA_P1_R1_Ave = average_PCs(PCA_P1_R1)
+plot(PCA_P1_R1_Ave)
+title!("R1 Neural PCs")
+
+PCA_P1_R4_Ave = average_PCs(PCA_P1_R4)
+plot(PCA_P1_R4_Ave)
+title!("R4 Neural PCs")
+
+# Check the SVD features
+SVD_R1_Ave = average_PCs(SVD_R1)
+plot(SVD_R1_Ave[:,1:5])
+title!("R1 Motion SVDs")
+plot(SVD_R1_Ave[:,51:55])
+title!("R1 Movie SVDs")
+
+SVD_R4_Ave = average_PCs(SVD_R4)
+plot(SVD_R4_Ave[:,1:5])
+title!("R4 Motion SVDs")
+plot(SVD_R4_Ave[:,51:55])
+title!("R4 Movie SVDs")
+
+# Check cut data
+P1_R1_Ave_Cut = [x[1:200,:] for x in Probe1_R1_Cut if size(x,1) >=200]
+P1_R1_Ave_Cut = ave_vector(P1_R1_Ave_Cut)
+P1_R4_Ave_Cut = [x[1:200,:] for x in Probe1_R4_Cut if size(x,1) >=200]
+P1_R4_Ave_Cut = ave_vector(P1_R4_Ave_Cut)
+plot(P1_R1_Ave_Cut, label="R1 Cut Ave")
+plot!(P1_R4_Ave_Cut, label="R4 Cut Ave")
+
+# Check cut neural PCs
+PCA_P1_R1_Ave_Cut = [x[1:200] for x in PCA_P1_R1_Cut if size(x,1) >=200]
+PCA11_Ave = average_PCs(PCA_P1_R1_Ave_Cut)
+plot(PCA11_Ave)
+PCA_P1_R4_Ave_Cut = [x[1:200] for x in PCA_P1_R4_Cut if size(x,1) >=200]
+PCA14_Ave = average_PCs(PCA_P1_R4_Ave_Cut)
+plot!(PCA14_Ave)
+
+# Check cut SVD Features
+SVD_R1_Ave = [x[1:200,:] for x in SVD_R1_Cut if size(x,1) >=200]
+SVD_R1_Ave = average_PCs(SVD_R1_Ave)
+plot(SVD_R1_Ave[:,1:5])
+title!("R1 Motion SVDs")
+plot(SVD_R1_Ave[:,51:55])
+title!("R1 Movie SVDs")
+
+SVD_R4_Ave = [x[1:200,:] for x in SVD_R4_Cut if size(x,1) >=200]
+SVD_R4_Ave = average_PCs(SVD_R4_Ave)
+plot(SVD_R4_Ave[:,1:5])
+title!("R4 Motion SVDs")
+plot(SVD_R4_Ave[:,51:55])
+title!("R4 Movie SVDs")
+
+
+
+
+
+# Load the data -> we didnt fit an encoder with lagged inputs.
+# _, λ_SVD_FRs, r2_train_SVD_FRs, r2_val_SVD_FRs, r2_test_SVD_FRs, r2_fullcut_SVD_FRs, best_β = load_results_from_csv("Results\\TD13d_11_12_AR\\SVD_Red_To_Neural_PCs")
 
 # Assuming KP_R1 is a vector of matrices
 for i in 1:length(KP_R1)
@@ -57,36 +125,126 @@ for i in 1:length(KP_R4_Cut)
     KP_R4_Cut[i] .= replace(KP_R4_Cut[i], NaN => 0.0)
 end
 
+
+"""
+Prefit the encoder models
+"""
+lags=4
+SVD_R1_selected = [hcat(x[100-lags:end, 1:5], x[100-lags:end, 51:55]) for x in SVD_R1]
+SVD_R4_selected = [hcat(x[100-lags:end, 1:5], x[100-lags:end, 51:55]) for x in SVD_R4]
+
+# Get the uncut data labeling and averaging
+X_R1 = [X[1:end,:] for X in SVD_R1_selected]
+X_R4 = [X[1:end,:] for X in SVD_R4_selected]
+
+Y_R1 = [Y[100-lags:end,:] for Y in PCA_P1_R1]
+Y_R4 = [Y[100-lags:end,:] for Y in PCA_P2_R4]
+
+X_R1_kernel = kernelize_past_features(X_R1, 4)
+X_R4_kernel = kernelize_past_features(X_R4, 4)
+
+Y_R1_trimmed = trim_Y_train_past(Y_R1, 4)
+Y_R4_trimmed = trim_Y_train_past(Y_R4, 4)
+
+# Add autoregressive features in Neural acitvity
+X_R1_Cut = [x[2:end, :] for x in X_R1_kernel];  # Remove frist row since first timepoints can't be predicted
+X_R4_Cut = [x[2:end, :] for x in X_R4_kernel];
+
+Y_R1_Cut = [y[1:end-1, :] for y in Y_R1_trimmed];  # Remove last row since there is no end+1 timepoint.
+Y_R4_Cut = [y[1:end-1, :] for y in Y_R4_trimmed];
+
+Y_R1_AR = [y[2:end, :] for y in Y_R1_trimmed];  # Cut first timepoint because it can't be predicted
+Y_R4_AR = [y[2:end, :] for y in Y_R4_trimmed]; 
+
+X_R1_AR = [hcat(X_R1_Cut[i], Y_R1_Cut[i]) for i in eachindex(X_R1_Cut)]
+X_R4_AR = [hcat(X_R4_Cut[i], Y_R4_Cut[i]) for i in eachindex(X_R4_Cut)]
+
+FCs = cat(FCs_R1, FCs_R4, dims=2)
+LRCs= cat(LRCs_R1, LRCs_R4, dims=1)
+
+X_R1 = [X_R1_AR[i][1:(FCs_R1[i]-97), :] for i in eachindex(X_R1_AR)]
+X_R4 = [X_R4_AR[i][1:(FCs_R4[i]-97), :] for i in eachindex(X_R4_AR)]
+
+Y_R1 = [Y_R1_AR[i][1:(FCs_R1[i]-97), :] for i in eachindex(Y_R1_AR)]
+Y_R4 = [Y_R4_AR[i][1:(FCs_R4[i]-97), :] for i in eachindex(Y_R4_AR)]
+
+X_eng = cat(X_R1, X_R4, dims=1)
+Y_eng = cat(Y_R1, Y_R4, dims=1)
+
+
+X_R1 = [X_R1_AR[i][LRCs_R1[i]-107:(LRCs_R1[i]-97), :] for i in eachindex(X_R1_AR)]
+X_R4 = [X_R4_AR[i][LRCs_R4[i]-107:(LRCs_R4[i]-97), :]  for i in eachindex(X_R4_AR)]
+
+Y_R1 = [Y_R1_AR[i][LRCs_R1[i]-107:(LRCs_R1[i]-97), :]  for i in eachindex(Y_R1_AR)]
+Y_R4 = [Y_R4_AR[i][LRCs_R4[i]-107:(LRCs_R4[i]-97), :]  for i in eachindex(Y_R4_AR)]
+
+X_diseng = cat(X_R1, X_R4, dims=1)
+Y_diseng = cat(Y_R1, Y_R4, dims=1)
+
+
+# Prefit engaged model
+X_eng = vcat(X_eng...)
+Y_eng = vcat(Y_eng...)
+
+β_eng = weighted_ridge_regression(X_eng, Y_eng, 0.01)
+
+
+X_diseng = vcat(X_diseng...)
+Y_diseng = vcat(Y_diseng...)
+
+β_diseng = weighted_ridge_regression(X_diseng, Y_diseng, 0.01)
+
+
+
+"""
+Set up the switching encoder model
+"""
+
 # Setup the X and Y variables for switching model -> 97:end cuts out pregc period leaving enough for 4 point kernel
-SVD_R1_selected = [hcat(x[97:end, 1:20], x[97:end, 51:70]) for x in SVD_R1_Cut]
-SVD_R4_selected = [hcat(x[97:end, 1:20], x[97:end, 51:70]) for x in SVD_R4_Cut]
+lags=4
+SVD_R1_selected = [hcat(x[100-lags:end, 1:5], x[100-lags:end, 51:55]) for x in SVD_R1_Cut]
+SVD_R4_selected = [hcat(x[100-lags:end, 1:5], x[100-lags:end, 51:55]) for x in SVD_R4_Cut]
 X = cat(SVD_R1_selected, SVD_R4_selected, dims=1)
 # X = cat(KP_R1_Cut, KP_R4_Cut, dims=1)
 # X = [x[97:end, :] for x in X]
-# Y = cat(PCA_P1_R1_Cut, PCA_P1_R4_Cut, dims=1)
-Y = cat(Probe1_R1_Cut, Probe1_R4_Cut, dims=1)
-Y = [y[97:end, :] for y in Y]
+Y = cat(PCA_P1_R1_Cut, PCA_P1_R4_Cut, dims=1)
+# Y = cat(Probe1_R1_Cut, Probe1_R4_Cut, dims=1)
+Y = [y[100-lags:end, :] for y in Y]
 
 # Preprocess by cutting out pre GC times and Kernelizing
-lags=4
+
 X_kern = kernelize_past_features(X, lags)
 Y_trim = trim_Y_train_past(Y, lags)
 
+
+# Add autoregressive features in Neural acitvity
+X_cut = [x[2:end, :] for x in X_kern];  # Remove frist row since first timepoints can't be predicted
+Y_cut = [y[1:end-1, :] for y in Y_trim];  # Remove last row since there is no end+1 timepoint.
+Y_AR = [y[2:end, :] for y in Y_trim];  # Cut first timepoint because it can't be predicted
+
+X_AR = [hcat(X_cut[i], Y_cut[i]) for i in eachindex(X_cut)]
+
+
 # Transpose for input to switching regression model
-X_ready = permutedims.(X_kern)
-Y_ready = permutedims.(Y_trim)
+X_ready = permutedims.(X_AR)
+Y_ready = permutedims.(Y_AR)
 include(".\\Julia\\Zutils.jl")
 # Initialize the Gaussian HMM-GLM
 model = SwitchingGaussianRegression(;K=2, input_dim=size(X_ready[1])[1], output_dim=size(Y_ready[1])[1], include_intercept=true)
 
-model.B[1].β = best_β
-model.B[1].λ = λ_SVD_FRs
-model.B[2].λ = λ_SVD_FRs
-# Initialize the model with domain knowledge
-model.A = [0.2 0.8; 0.5 0.5]
-model.πₖ = [0.5; 0.5]
+model.B[1].β = β_eng
+model.B[2].β = β_diseng
 
-lls = fit_custom!(model, Y_ready, X_ready, max_iters=100)
+model.B[1].λ = 0.01
+model.B[2].λ = 0.01
+# Initialize the model with domain knowledge
+# model.A = [0.99 0.005 0.005; 0.005 0.99 0.005; 0.005 0.005 0.99];
+# model.πₖ = [0.4; 0.3; 0.3]
+model.A = [0.9999 0.0001; 0.0001 0.9999]
+model.πₖ = [0.0001; 0.9999]
+
+
+lls = fit_custom!(model, Y_ready, X_ready, max_iters=500)
 
 plot(lls)
 title!("Training Log-Likelihood")
@@ -99,15 +257,15 @@ ylabel!("Log-Likelihood")
 Plot the trial averaged inference
 """
 
-SVD_R1_selected = [hcat(x[97:end, 1:20], x[97:end, 51:70]) for x in SVD_R1]
-SVD_R4_selected = [hcat(x[97:end, 1:20], x[97:end, 51:70]) for x in SVD_R4]
+SVD_R1_selected = [hcat(x[100-lags:end, 1:5], x[100-lags:end, 51:55]) for x in SVD_R1]
+SVD_R4_selected = [hcat(x[100-lags:end, 1:5], x[100-lags:end, 51:55]) for x in SVD_R4]
 
 # Get the uncut data labeling and averaging
-X_R1 = [X[97:300,:] for X in SVD_R1_selected]
-X_R4 = [X[97:300,:] for X in SVD_R4_selected]
+X_R1 = [X[100-lags:300,:] for X in SVD_R1_selected]
+X_R4 = [X[100-lags:300,:] for X in SVD_R4_selected]
 
-Y_R1 = [Y[97:300,:] for Y in Probe1_R1]
-Y_R4 = [Y[97:300,:] for Y in Probe1_R4]
+Y_R1 = [Y[100-lags:300,:] for Y in PCA_P1_R1]
+Y_R4 = [Y[100-lags:300,:] for Y in PCA_P2_R1]
 
 X_R1_kernel = kernelize_past_features(X_R1, 4)
 X_R4_kernel = kernelize_past_features(X_R4, 4)
@@ -115,14 +273,24 @@ X_R4_kernel = kernelize_past_features(X_R4, 4)
 Y_R1_trimmed = trim_Y_train_past(Y_R1, 4)
 Y_R4_trimmed = trim_Y_train_past(Y_R4, 4)
 
-YY = permutedims.(Y_R1_trimmed)
-XX = permutedims.(X_R1_kernel)
+# Add autoregressive features in Neural acitvity
+X_R1_Cut = [x[2:end, :] for x in X_R1_kernel];  # Remove frist row since first timepoints can't be predicted
+X_R4_Cut = [x[2:end, :] for x in X_R4_kernel];
 
-YY_R4 = permutedims.(Y_R4_trimmed)
-XX_R4 = permutedims.(X_R4_kernel)
+Y_R1_Cut = [y[1:end-1, :] for y in Y_R1_trimmed];  # Remove last row since there is no end+1 timepoint.
+Y_R4_Cut = [y[1:end-1, :] for y in Y_R4_trimmed];
 
+Y_R1_AR = [y[2:end, :] for y in Y_R1_trimmed];  # Cut first timepoint because it can't be predicted
+Y_R4_AR = [y[2:end, :] for y in Y_R4_trimmed]; 
 
+X_R1_AR = [hcat(X_R1_Cut[i], Y_R1_Cut[i]) for i in eachindex(X_R1_Cut)]
+X_R4_AR = [hcat(X_R4_Cut[i], Y_R4_Cut[i]) for i in eachindex(X_R4_Cut)]
 
+YY = permutedims.(Y_R1_AR)
+XX = permutedims.(X_R1_AR)
+
+YY_R4 = permutedims.(Y_R4_AR)
+XX_R4 = permutedims.(X_R4_AR)
 
 FB_R1 = label_data(model, YY, XX);
 FB_R4 = label_data(model, YY_R4, XX_R4);
@@ -159,7 +327,7 @@ R4_States_df = DataFrame(R4_States, :auto)
 R1_States_df = DataFrame(R1_States, :auto)
 
 # Write DataFrames to CSV without headers
-CSV.write(joinpath("Results\\TD13d_11_12_FC_FIT\\SVD_Red_To_Neural_FRs" , "R4_Tongue_Reg.csv"), R4_Tongue_df; header=false)
-CSV.write(joinpath("Results\\TD13d_11_12_FC_FIT\\SVD_Red_To_Neural_FRs"  , "R1_Tongue_Reg.csv"), R1_Tongue_df; header=false)
-CSV.write(joinpath("Results\\TD13d_11_12_FC_FIT\\SVD_Red_To_Neural_FRs"  , "R4_States_Reg.csv"), R4_States_df; header=false)
-CSV.write(joinpath("Results\\TD13d_11_12_FC_FIT\\SVD_Red_To_Neural_FRs"  , "R1_States_Reg.csv"), R1_States_df; header=false)
+CSV.write(joinpath("Results\\TD13d_11_12_AR\\SVD_Red_To_Neural_FRs" , "R4_Tongue_Reg.csv"), R4_Tongue_df; header=false)
+CSV.write(joinpath("Results\\TD13d_11_12_AR\\SVD_Red_To_Neural_FRs"  , "R1_Tongue_Reg.csv"), R1_Tongue_df; header=false)
+CSV.write(joinpath("Results\\TD13d_11_12_AR\\SVD_Red_To_Neural_FRs"  , "R4_States_Reg.csv"), R4_States_df; header=false)
+CSV.write(joinpath("Results\\TD13d_11_12_AR\\SVD_Red_To_Neural_FRs"  , "R1_States_Reg.csv"), R1_States_df; header=false)

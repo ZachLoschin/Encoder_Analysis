@@ -107,7 +107,7 @@ function weighted_ridge_regression(X::Matrix{Float64}, Y::Matrix{Float64}, λ::F
     reg = zeros(D + 1, D + 1)
     reg[2:end, 2:end] .= λ
 
-    β = (Xw'Xw + reg) \ (Xw'Yw)
+    β = (X_bias'Xw + reg) \ (X_bias'Yw)
 
     return β
 end

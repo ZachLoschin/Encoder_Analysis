@@ -12,10 +12,10 @@ clc;
 close all
 %% Import the state inference and tongue data
 
-R1_States = readmatrix("C:\Research\Encoder_Modeling\Encoder_Analysis\Results\TD15d_11_26\SVD_Red_To_Neural_PCs\R1_States_Reg.csv");  % Load the R1_States matrix
-R4_States = readmatrix("C:\Research\Encoder_Modeling\Encoder_Analysis\Results\TD15d_11_26\SVD_Red_To_Neural_PCs\R4_States_Reg.csv");  % Load the R4_States matrix
-R1_Tongue = readmatrix("C:\Research\Encoder_Modeling\Encoder_Analysis\Results\TD15d_11_26\SVD_Red_To_Neural_PCs\R1_Tongue_Reg.csv");
-R4_Tongue = readmatrix("C:\Research\Encoder_Modeling\Encoder_Analysis\Results\TD15d_11_26\SVD_Red_To_Neural_PCs\R4_Tongue_Reg.csv");
+R1_States = readmatrix("C:\Research\Encoder_Modeling\Encoder_Analysis\Results\TD13d_11_12_AR\SVD_Red_To_Neural_FRs\R1_States_Reg.csv");  % Load the R1_States matrix
+R4_States = readmatrix("C:\Research\Encoder_Modeling\Encoder_Analysis\Results\TD13d_11_12_AR\SVD_Red_To_Neural_FRs\R4_States_Reg.csv");  % Load the R4_States matrix
+R1_Tongue = readmatrix("C:\Research\Encoder_Modeling\Encoder_Analysis\Results\TD13d_11_12_AR\SVD_Red_To_Neural_FRs\R1_Tongue_Reg.csv");
+R4_Tongue = readmatrix("C:\Research\Encoder_Modeling\Encoder_Analysis\Results\TD13d_11_12_AR\SVD_Red_To_Neural_FRs\R4_Tongue_Reg.csv");
 % close all
 % R1_Tongue = R1_Tongue';
 % R4_Tongue = R4_Tongue';
