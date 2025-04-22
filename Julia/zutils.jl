@@ -37,6 +37,7 @@ function fit_custom!(
     Aggregate_FB_storage = SSD.initialize_forward_backward(model, total_obs)
 
     for iter in 1:max_iters
+        println("A: ", model.A)
         println("Iter: ", iter)
         # broadcast estep!() to all storage structs
         output = SSD.estep!.(Ref(model), zipped_matrices, FB_storage_vec)
@@ -65,20 +66,46 @@ function fit_custom!(
     return lls
 end
 
-function update_transition_matrix!(
+# function SSD.update_transition_matrix!(
+#     model::SSD.AbstractHMM, FB_storage_vec::Vector{SSD.ForwardBackward{Float64}}
+# )
+#     println("Custom transition matrix")
+#     for j in 1:(model.K)
+#         for k in 1:(model.K)
+#             num = exp(SSD.logsumexp(vcat([FB_trial.ξ[j, k, :] for FB_trial in FB_storage_vec]...)))
+#             denom = exp.(SSD.logsumexp(vcat([FB_trial.ξ[j, :, :]' for FB_trial in FB_storage_vec]...)))  # this logsumexp takes care of both sums in denom
+#             model.A[j,k] = num / denom
+#         end
+#     end
+# end
+
+function SSD.update_transition_matrix!(
     model::SSD.AbstractHMM, FB_storage_vec::Vector{SSD.ForwardBackward{Float64}}
 )
-    for j in 1:(model.K)
-        for k in 1:(model.K)
-            num = exp(SSD.logsumexp(vcat([FB_trial.ξ[j, k, :] for FB_trial in FB_storage_vec]...)))
-            denom = exp.(SSD.logsumexp(vcat([FB_trial.ξ[j, :, :]' for FB_trial in FB_storage_vec]...)))  # this logsumexp takes care of both sums in denom
-            model.A[j,k] = num / denom
+    println("Custom transition matrix large sticky")
+    A_temp = zeros(model.K, model.K)
+
+    for j in 1:model.K
+        for k in 1:model.K
+            A_temp[j, k] = exp(SSD.logsumexp(vcat([FB_trial.ξ[j, k, :] for FB_trial in FB_storage_vec]...)))
         end
+    end
+
+    for k in 1:model.K
+        A_temp[k, k] += 100
+    end
+
+    # renorm
+    for j in 1:model.K
+        row_sum = sum(A_temp[j, :])
+        model.A[j, :] = A_temp[j, :] ./ row_sum
     end
 end
 
 
+
 function SSD.update_emissions!(model::SSD.AbstractHMM, FB_storage::SSD.ForwardBackward, data)
+    println("Using WLS")
     # update regression models
     w = exp.(permutedims(FB_storage.γ))
 

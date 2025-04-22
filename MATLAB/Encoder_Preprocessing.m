@@ -46,7 +46,7 @@ params.dt = 1/100;
 pre_gc_points = -params.tmin / params.dt;
 
 % smooth with causal gaussian kernel
-params.smooth = 10;
+params.smooth = 10;  % play 
 
 % cluster qualities to use
 params.quality = {'good','fair','excellent'}; % accepts any cell array of strings - special character 'all' returns clusters of any quality

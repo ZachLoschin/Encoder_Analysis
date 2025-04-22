@@ -30,7 +30,8 @@ R4_Tongue = readmatrix("C:\Research\Encoder_Modeling\Encoder_Analysis\Results\TD
 % R4_Tongue = R4_Tongue(:, start:stop);
 
 %% -- Combine the R4 and R1 Datasets and Heatmaps -- %%
-All_States = exp([R4_States; R1_States]);
+% All_States = exp([R4_States; R1_States]);
+All_States = [R4_States; R1_States];
 All_Tongue = [R4_Tongue; R1_Tongue];
 
 %% Normalize the kinametic data

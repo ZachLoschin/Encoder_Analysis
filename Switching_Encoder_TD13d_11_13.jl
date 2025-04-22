@@ -85,9 +85,9 @@ include(".\\Julia\\Zutils.jl")
 # Initialize the Gaussian HMM-GLM
 model = SwitchingGaussianRegression(;K=2, input_dim=size(X_ready[1])[1], output_dim=size(Y_ready[1])[1], include_intercept=true)
 
-model.B[1].β = best_β
-model.B[1].λ = λ_SVD_FRs
-model.B[2].λ = λ_SVD_FRs
+# model.B[1].β = best_β
+# model.B[1].λ = λ_SVD_FRs
+# model.B[2].λ = λ_SVD_FRs
 # Initialize the model with domain knowledge
 model.A = [0.2 0.8; 0.5 0.5]
 model.πₖ = [0.5; 0.5]
