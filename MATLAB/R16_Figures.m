@@ -12,10 +12,11 @@ clc;
 close all
 %% Import the state inference and tongue data
 
-R1_States = readmatrix("C:\Research\Encoder_Modeling\Encoder_Analysis\Results_423\TD1d_02_22\Jaw2PC\R1_States_Reg.csv");  % Load the R1_States matrix
-R4_States = readmatrix("C:\Research\Encoder_Modeling\Encoder_Analysis\Results_423\TD1d_02_22\Jaw2PC\R16_States_Reg.csv");  % Load the R4_States matrix
-R1_Tongue = readmatrix("C:\Research\Encoder_Modeling\Encoder_Analysis\Results_423\TD1d_02_22\Jaw2PC\R1_Tongue_Reg.csv");
-R4_Tongue = readmatrix("C:\Research\Encoder_Modeling\Encoder_Analysis\Results_423\TD1d_02_22\Jaw2PC\R16_Tongue_Reg.csv");
+R1_States = readmatrix("C:\Research\Encoder_Modeling\Encoder_Analysis\Results_423\YH1_05_08\Jaw2PC\R1_States_Vit_Reg.csv");  % Load the R1_States matrix
+R4_States = readmatrix("C:\Research\Encoder_Modeling\Encoder_Analysis\Results_423\YH1_05_08\Jaw2PC\R16_States_Vit_Reg.csv");  % Load the R4_States matrix
+R1_Tongue = readmatrix("C:\Research\Encoder_Modeling\Encoder_Analysis\Results_423\YH1_05_08\Jaw2PC\R1_Tongue_Reg.csv");
+R4_Tongue = readmatrix("C:\Research\Encoder_Modeling\Encoder_Analysis\Results_423\YH1_05_08\Jaw2PC\R16_Tongue_Reg.csv");
+
 % close all
 % R1_Tongue = R1_Tongue';
 % R4_Tongue = R4_Tongue';
@@ -93,7 +94,7 @@ yline(size(R4_Tongue, 2), 'k-', 'LineWidth', 3);
 
 % Add labels or annotations
 text(-30, size(R4_Tongue, 2) + 2, 'R1', 'FontSize', 12, 'Color', "k");
-text(-30, size(R4_Tongue, 2) - 2, 'R4', 'FontSize', 12, 'Color', "k");
+text(-30, size(R4_Tongue, 2) - 2, 'R16', 'FontSize', 12, 'Color', "k");
 
 % Set axes limits and labels
 set(gca, 'YTick', 0:10:260);
@@ -118,7 +119,115 @@ xlim([0 200])
 % Hold off to finish the plot
 hold off;
 
-title("Single Trial State Estimates: R1 and R4");
+title("Single Trial State Estimates: R1 and R16");
+
+
+%% NEW FIGURE %%
+
+engaged_durations = [];
+disengaged_durations = [];
+engaged_licks = {};
+disengaged_licks = {};
+
+% Transpose to [timepoints x trials]
+All_Tongue = All_Tongue';
+All_States = All_States';
+
+nTrials = size(All_Tongue, 2);
+
+figure; hold on;
+set(gcf, 'Position', [100, 100, 800, 800]);
+
+% Loop through each trial
+for trial = 1:nTrials
+    tongue = All_Tongue(:, trial)';
+    states = All_States(:, trial)';
+    
+    % Find lick bouts: stretches of non-NaN values
+    is_valid = ~isnan(tongue);
+    diff_valid = diff([0 is_valid 0]);
+    lick_starts = find(diff_valid == 1);
+    lick_ends   = find(diff_valid == -1) - 1;
+    
+    for i = 1:length(lick_starts)
+        idx = lick_starts(i):lick_ends(i);
+        bout = tongue(idx);
+        bout_states = states(idx);
+        
+        % Color based on average state during the bout
+        color = 'r';
+        if mean(bout_states == 1) <= 0.5
+            color = 'b';
+        end
+        
+        % Save the duration
+        duration = length(idx);
+        
+        % Classify based on average state
+        if mean(bout_states == 1) <= 0.5
+            engaged_durations(end+1) = duration;
+            engaged_licks{end+1} = bout;
+        else
+            disengaged_durations(end+1) = duration;
+            disengaged_licks{end+1} = bout;
+        end
+
+
+        plot(idx, (trial - 1) + bout, color, 'LineWidth', 1.2);
+    end
+end
+
+xlabel('Time (s)');
+ylabel('Trial #');
+title('Engaged (Red) vs Disengaged (Blue) Licks');
+xticks([0 100 200]);
+% xticklabels({'0', '1', '2'});
+% set(gca, 'TickLength', [0 0]);
+% box off;
+% ylim([0 nTrials + 1]);
+
+%% Boxplot of Lick Bout Durations
+%% Boxplot of Lick Bout Durations
+figure;
+boxplot([engaged_durations'; disengaged_durations'], ...
+        [repmat({'Engaged'}, length(engaged_durations), 1); ...
+         repmat({'Disengaged'}, length(disengaged_durations), 1)]);
+ylabel('Lick Duration (ms)');
+title('Comparison of Engaged vs Disengaged Lick Durations');
+
+% Convert y-axis ticks from frames (10ms each) to milliseconds
+yt = yticks;
+yticklabels(string(yt * 10));
+
+
+%% Example plots of licks
+% How many examples to show
+nExamples = 10;
+
+% Random indices (protect against too few licks)
+nEngaged = min(nExamples, length(engaged_licks));
+nDisengaged = min(nExamples, length(disengaged_licks));
+
+% Plot engaged licks
+figure;
+for i = 1:nEngaged
+    subplot(2, nExamples, i);
+    plot(engaged_licks{i}, 'r', 'LineWidth', 1.5);
+    title(['Engaged ' num2str(i)]);
+    xlabel('Time'); ylabel('Lick amplitude');
+end
+
+% Plot disengaged licks
+for i = 1:nDisengaged
+    subplot(2, nExamples, nExamples + i);
+    plot(disengaged_licks{i}, 'b', 'LineWidth', 1.5);
+    title(['Disengaged ' num2str(i)]);
+    xlabel('Time'); ylabel('Lick amplitude');
+end
+
+sgtitle('Example Engaged (Red) vs Disengaged (Blue) Licks');
+
+
 
 
 function normalized_data = normalize_trials(data, method)

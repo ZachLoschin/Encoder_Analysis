@@ -3,11 +3,6 @@
 % March 2025
 % Cleaning up preprocessing file for MC engagement analysis
 
-
-%% -- CHECK THESE ASPECTS BEFORE RUNNING -- %%
-resp = input("Did you check thsat the files in loadTD line up with SVD files?");
-
-
 %% Finding "Kinematic Modes"
 clear,clc
 
@@ -26,6 +21,9 @@ params.behav_only          = 0;
 params.timeWarp            = 0;  % piecewise linear time warping - each lick duration on each trial gets warped to median lick duration for that lick across trials
 params.nLicks              = 20; % number of post go cue licks to calculate median lick duration for and warp individual trials to
 
+
+
+% explore lowering this to aroiund 0.5
 params.lowFR               = 1; % remove clusters with firing rates across all trials less than this val
 
 params.condition(1) = {'hit==1 | hit==0' };    % left to right         % right hits, no stim, aw off
@@ -36,7 +34,7 @@ params.condition(end+1) = {'hit==1 & trialTypes == 1& rewardedLick == 4'};    % 
 params.condition(end+1) = {'hit==1 & trialTypes == 2& rewardedLick == 4'};    % left to right         % right hits, no stim, aw off
 params.condition(end+1) = {'hit==1 & trialTypes == 3& rewardedLick == 4'};    % left to right         % right hits, no stim, aw off
 params.condition(end+1) = {'hit==1 & rewardedLick == 1'};    % left to right         % right hits, no stim, aw off
-params.condition(end+1) = {'hit==1 & rewardedLick == 4'};    % left to right         % right hits, no stim, aw off
+params.condition(end+1) = {'hit==1 & rewardedLick == 6'};    % left to right         % right hits, no stim, aw off
 params.condition(end+1) = {'hit==1' };    % left to right         % right hits, no stim, aw off
 
 % Take this big window for z-scoring to baseline
@@ -49,7 +47,7 @@ pre_gc_points = -params.tmin / params.dt;
 params.smooth = 10;  % play 
 
 % cluster qualities to use
-params.quality = {'good','fair','excellent'}; % accepts any cell array of strings - special character 'all' returns clusters of any quality
+params.quality = {'good','fair','excellent', 'ok', 'garbage'}; % accepts any cell array of strings - special character 'all' returns clusters of any quality
 
 params.traj_features = {{'tongue','left_tongue','right_tongue','jaw','trident','nose'},...
     {'top_tongue','topleft_tongue','bottom_tongue','bottomleft_tongue','jaw','top_nostril','bottom_nostril'}};
@@ -65,8 +63,9 @@ params.fa = false;         % if true, reduces neural dimensions to 10 with facto
 params.bctype = 'reflect'; % options are : reflect  zeropad  none
 
 %% SPECIFY DATA TO LOAD
-datapth = 'C:\Research\Encoder_Modeling\Encoder_Analysis\Data\processed sessions\r14';
+datapth = 'C:\Research\Encoder_Modeling\Encoder_Analysis\Data\processed sessions\r1';
 meta = [];
+
 meta = loadTD(meta,datapth);
 params.probe = {meta.probe}; 
 
@@ -77,59 +76,6 @@ params.probe = {meta.probe};
 for sessix = 1:numel(meta)
     me(sessix) = loadMotionEnergy(obj(sessix), meta(sessix), params(sessix), datapth);
 end
-
-%% Check if video features for SVD have same lengths in obj.me
-folderPath = 'C:\Research\Encoder_Modeling\Encoder_Analysis\Data\video_data\TD13d\2024-11-13\cam1';
-[frameCounts, mismatchFlags] = checkVideoFrameCounts(folderPath, obj);
-
-
-%% Import the Facemap object and extract SVD features
-% Load facemap processed files
-% SVD_feats_cam0_struct = load("C:\Research\Encoder_Modeling\Encoder_Analysis\Data\SVD_features\FaceMap_Processed\Cam0_TD13d_2024-11-12_cam_0_date_2024_11_12_time_17_49_00_v001_proc.mat");
-SVD_feats_cam0_struct = load('C:\Research\Encoder_Modeling\Encoder_Analysis\Data\SVD_features\FaceMap_Processed\TD13d_11_13\Cam0_TD13d_2024-11-13_cam_0_date_2024_11_13_time_17_56_41_v001_proc.mat');
-% SVD_feats_cam0_struct = load("C:\Research\Encoder_Modeling\Encoder_Analysis\Data\SVD_features\FaceMap_Processed\TD15d_11_26\Cam0_TD15d_2024-11-26_cam_0_date_2024_11_26_time_15_55_47_v001_proc.mat");
-
-% Extract features
-SVD_Feats_cam0 = [SVD_feats_cam0_struct.motSVD_0(:,1:50), SVD_feats_cam0_struct.movSVD_0(:,1:50)];
-% SVD_Feats_cam1 = [SVD_feats_cam1_struct.motSVD_0(:,1:50), SVD_feats_cam1_struct.movSVD_0(:,1:50)];
-% SVD_features = [SVD_Feats_cam0, SVD_Feats_cam1];
-
-SVD_features = SVD_Feats_cam0;
-
-clear SVD_feats_cam0_struct
-% clear SVD_feats_cam1_struct
-
-
-%% Get each trial of SVD_features using the framcounts
-cam_framerate = 400;
-trialFeatures = cell(length(frameCounts), 1);
-t = [];
-startIdx = 1;
-
-for i = 1:length(frameCounts)
-    disp(i)
-    endIdx = startIdx + frameCounts(i) - 1;
-
-    % Handle off-by-one issue if endIdx exceeds SVD_features
-    if endIdx > size(SVD_features, 1)
-        warning('Frame count for trial %d exceeds available SVD data. Trimming last frame.', i);
-        endIdx = size(SVD_features, 1);
-    end
-
-    % Check if slice is one longer than it should be
-    actualLength = endIdx - startIdx + 1;
-    expectedLength = frameCounts(i);
-    if actualLength > expectedLength
-        endIdx = endIdx - 1;  % Trim the last frame
-        warning('Trial %d: Trimming last frame to match frameCounts.', i);
-    end
-
-    trialFeatures{i} = SVD_features(startIdx:endIdx, :);
-    t = [t, size(trialFeatures{i}, 1) / cam_framerate];
-    startIdx = endIdx + 1;
-end
-
-
 
 %% Get kinematic data
 %---------------------------------------------
@@ -182,113 +128,25 @@ R1_Contacts = all_contacts(R1_Trials);  % these contacts are relative to the gc
 R4_Contacts = all_contacts(R4_Trials);  % these contacts are relative to the gc
 
 %% Find trial FCs, Last Relevant Contacts (LRCs), and Trials2Remove
-[trials2removeR1, FCs_R1, LRCs_R1] = filter_trials_by_licking(R1_Contacts, min_licks=3);
-[trials2removeR4, FCs_R4, LRCs_R4] = filter_trials_by_licking(R4_Contacts, min_licks=5);
+[trials2removeR1, FCs_R1_clean, LRCs_R1_clean] = filter_trials_by_licking(R1_Contacts, min_licks=3);
+[trials2removeR4, FCs_R4_clean, LRCs_R4_clean] = filter_trials_by_licking(R4_Contacts, min_licks=5);
 
 % This trials2remove are indices into R1 and R4_Contacts, not trial numbers
 
-%% Get SVD features by trial
-R1_Features = trialFeatures(R1_Trials);
-R4_Features = trialFeatures(R4_Trials);
-
-R1_Times = {obj.traj{1,1}(R1_Trials).frameTimes};
-R4_Times = {obj.traj{1,1}(R4_Trials).frameTimes};
-
-gc = obj.bp.ev.goCue(:);
-R1_GC = gc(R1_Trials);
-R4_GC = gc(R4_Trials);
-
-vid_offset = 0.49;  % time axis offset btwn video and spike glx
-
-% Find invalid trials where the GC is after the end of the video
-[R1_Valid_Trials, ~, ~, ~] = ...
-    filter_valid_trials(R1_Trials, R1_Features, R1_Times, R1_GC, vid_offset);
-
-[R4_Valid_Trials, ~, ~, ~] = ...
-    filter_valid_trials(R4_Trials, R4_Features, R4_Times, R4_GC, vid_offset);
-
-% These are also trial indices into RN_Trials, not trial numbers
-
 %% Filter the trials by valid from SVD analysis and removal from contacts
-final_R1_trials = setdiff(R1_Valid_Trials, trials2removeR1);
-final_R4_trials = setdiff(R4_Valid_Trials, trials2removeR4);
 
-FCs_R1_clean = FCs_R1(final_R1_trials);
-LRCs_R1_clean = LRCs_R1(final_R1_trials);
+FCs_R1_clean(trials2removeR1) = [];
+LRCs_R1_clean(trials2removeR1) = [];
 
-FCs_R4_clean = FCs_R4(final_R4_trials);
-LRCs_R4_clean = LRCs_R4(final_R4_trials);
-
-R1_Valid_Features = R1_Features(final_R1_trials);
-R1_Valid_Times = R1_Times(final_R1_trials);
-R1_Valid_GC = R1_GC(final_R1_trials);
-
-R4_Valid_Features = R4_Features(final_R4_trials);
-R4_Valid_Times = R4_Times(final_R4_trials);
-R4_Valid_GC = R4_GC(final_R4_trials);
-
-%% Now pass the valid trials to the feature extraction function
-pregc_frames = (400 * 1) -1;
-postgc_frames = (400 * 5);
-R1_Trial_Features = extract_trial_features(R1_Valid_Features, R1_Valid_Times, R1_Valid_GC, pregc_frames, postgc_frames);
-R4_Trial_Features = extract_trial_features(R4_Valid_Features, R4_Valid_Times, R4_Valid_GC, pregc_frames, postgc_frames);
-
-
-%% Get into format for storage
-% Assuming R1_Trial_Features and R4_Trial_Features are cell arrays of trial matrices
-% Each matrix in the cell array has dimensions 2000 x 100 (timepoints x features)
-
-% Initialize empty arrays to store the reshaped features
-R1_SVD_Features_Uncut = [];
-R4_SVD_Features_Uncut = [];
-
-for i = 1:length(R1_Trial_Features)
-    % Resample time axis from 400Hz to 100Hz (i.e., 1/4th the number of timepoints)
-    resampled = resample(R1_Trial_Features{i}, 1, 4);  % downsample each trial
-    R1_SVD_Features_Uncut = [R1_SVD_Features_Uncut; resampled];
-end
-
-for i = 1:length(R4_Trial_Features)
-    resampled = resample(R4_Trial_Features{i}, 1, 4);
-    R4_SVD_Features_Uncut = [R4_SVD_Features_Uncut; resampled];
-end
-
-
-% Convert cell array to 3D matrix
-R1_SVD_Features_mat = cat(3, R1_Trial_Features{:});
-R4_SVD_Features_mat = cat(3, R4_Trial_Features{:});
-
-%% Get the cut features too
-
-% Preallocate with cell because resampled lengths may vary
-R1_SVD_Features_resampled = cell(1, size(R1_SVD_Features_mat, 3));
-R4_SVD_Features_resampled = cell(1, size(R4_SVD_Features_mat, 3));
-
-for i = 1:size(R1_SVD_Features_mat, 3)
-    trial = R1_SVD_Features_mat(:, :, i);  % [T x D]
-    resampled = resample(trial, 1, 4);     % downsample time axis
-    R1_SVD_Features_resampled{i} = resampled;
-end
-
-for i = 1:size(R4_SVD_Features_mat, 3)
-    trial = R4_SVD_Features_mat(:, :, i);
-    resampled = resample(trial, 1, 4);
-    R4_SVD_Features_resampled{i} = resampled;
-end
-
-% Convert back to matrix
-R1_SVD_Features_mat_resampled = cat(3, R1_SVD_Features_resampled{:});
-R4_SVD_Features_mat_resampled = cat(3, R4_SVD_Features_resampled{:});
-
-R1_SVD_Features_Cut = chop_and_stack_neural_data(R1_SVD_Features_mat_resampled, LRCs_R1_clean, 100);
-R4_SVD_Features_Cut = chop_and_stack_neural_data(R4_SVD_Features_mat_resampled, LRCs_R4_clean, 100);
+FCs_R4_clean(trials2removeR4) = [];
+LRCs_R4_clean(trials2removeR4) = [];
 
 %% Get the keypoints by trial
-R1_Keypoints_unfiltered = pos(101:end, :, R1_Trials);
-R4_Keypoints_unfiltered = pos(101:end, :, R4_Trials);
+R1_Keypoints = pos(101:end, :, R1_Trials);
+R4_Keypoints= pos(101:end, :, R4_Trials);
 
-R1_Keypoints = R1_Keypoints_unfiltered(:, :, final_R1_trials);
-R4_Keypoints = R4_Keypoints_unfiltered(:, :, final_R4_trials);
+R1_Keypoints(:,:,trials2removeR1) = [];
+R4_Keypoints(:,:,trials2removeR4) = [];
 
 % Reshape into matrix for storage
 R1_Keypoints_Uncut = reshape(permute(R1_Keypoints, [1, 3, 2]), [], size(R1_Keypoints, 2));
@@ -307,76 +165,20 @@ probe2 = size(params.cluid{1, 1},1)+1:Ncells;
 probe1_trialdat = obj.trialdat(:,probe1, :);
 probe2_trialdat = obj.trialdat(:,probe2, :);
 
-
 % Limit to the desired trials
 % This is done in multiple rouds since the final_RN_trials are indices into
 % the RN_trials, not absolute trial numbers
 probe1_R4 = probe1_trialdat(:,:,R4_Trials);  % -2 to 4s 100Hz
 probe2_R4 = probe2_trialdat(:,:,R4_Trials);
 
-probe1_R4 = probe1_R4(:,:,final_R4_trials);
-probe2_R4 = probe2_R4(:,:,final_R4_trials);
+probe1_R4(:,:,trials2removeR4) =[];
+probe2_R4(:,:,trials2removeR4) = [];
 
 probe1_R1 = probe1_trialdat(:,:,R1_Trials);
 probe2_R1 = probe2_trialdat(:,:,R1_Trials);
 
-probe1_R1 = probe1_R1(:,:,final_R1_trials);
-probe2_R1 = probe2_R1(:,:,final_R1_trials);
-
-%% Get the spike count data
-
-SpkTimes_P1 = getSpikesV2(obj, params, meta, -1, 5, 1);
-SpkTimes_P2 = getSpikesV2(obj, params, meta, -1, 5, 2);
-
-% Want to get something that is timepoints x Neurons x trials
-num_trials = length(SpkTimes_P1.SpkTimes);
-num_neurons = length(SpkTimes_P1.SpkTimes{1});
-num_timepoints = 600;
-
-Binned_P1 = zeros(num_timepoints, num_neurons, num_trials);
-
-for trial = 1:num_trials
-    for neuron = 1:num_neurons
-        Binned_P1(:, neuron, trial) = SpkTimes_P1.SpkTimes{trial}(neuron).SpkIndices(:);
-    end
-end
-
-
-num_trials = length(SpkTimes_P2.SpkTimes);
-num_neurons = length(SpkTimes_P2.SpkTimes{1});
-Binned_P2 = zeros(num_timepoints, num_neurons, num_trials);
-
-for trial = 1:num_trials
-    for neuron = 1:num_neurons
-        Binned_P2(:, neuron, trial) = SpkTimes_P2.SpkTimes{trial}(neuron).SpkIndices(:);
-    end
-end
-
-
-% Filtered by wanted trials
-Binned_P1_R1 = Binned_P1(:,R1_Trials,:);
-Binned_P1_R1 = Binned_P1_R1(:,final_R1_trials,:);
-
-Binned_P2_R1 = Binned_P2(:,R1_Trials,:);
-Binned_P2_R1 = Binned_P2_R1(:,final_R1_trials,:);
-
-Binned_P1_R4 = Binned_P1(:,R4_Trials,:);
-Binned_P1_R4 = Binned_P1_R4(:,final_R4_trials,:);
-
-Binned_P2_R4 = Binned_P2(:,R4_Trials,:);
-Binned_P2_R4 = Binned_P2_R4(:,final_R4_trials,:);
-
-% Shape into output file
-SpkCounts_P1_R1_Uncut = reshape(Binned_P1_R1, [], size(Binned_P1_R1, 3));
-SpkCounts_P2_R1_Uncut = reshape(Binned_P2_R1, [], size(Binned_P2_R1, 3));
-SpkCounts_P1_R4_Uncut = reshape(Binned_P1_R4, [], size(Binned_P1_R4, 3));
-SpkCounts_P2_R4_Uncut = reshape(Binned_P2_R4, [], size(Binned_P2_R4, 3));
-
-% Cut the data at LRCs
-SpkCounts_P1_R1_Cut = chop_and_stack_neural_data(permute(Binned_P1_R1, [1,3,2]), LRCs_R1_clean, 100);
-SpkCounts_P2_R1_Cut = chop_and_stack_neural_data(permute(Binned_P2_R1, [1,3,2]), LRCs_R1_clean, 100);
-SpkCounts_P1_R4_Cut = chop_and_stack_neural_data(permute(Binned_P1_R4, [1,3,2]), LRCs_R4_clean, 100);
-SpkCounts_P2_R4_Cut = chop_and_stack_neural_data(permute(Binned_P2_R4, [1,3,2]), LRCs_R4_clean, 100);
+probe1_R1(:,:,trials2removeR1) = [];
+probe2_R1(:,:,trials2removeR1) =[];
 
 %% Normalize the neural data to the baseline period
 probe1_R4_norm = zscore_pregc(probe1_R4, pre_gc_points);  % -1 to 5s 100Hz
@@ -429,10 +231,10 @@ Probe1_PCs_R4 = score1_reshaped(:, R4_Trials, :);
 Probe2_PCs_R1 = score2_reshaped(:, R1_Trials, :);
 Probe2_PCs_R4 = score2_reshaped(:, R4_Trials, :);
 
-Probe1_PCs_R1 = Probe1_PCs_R1(:, final_R1_trials, :);
-Probe1_PCs_R4 = Probe1_PCs_R4(:, final_R4_trials, :);
-Probe2_PCs_R1 = Probe2_PCs_R1(:, final_R1_trials, :);
-Probe2_PCs_R4 = Probe2_PCs_R4(:, final_R4_trials, :);
+Probe1_PCs_R1(:, trials2removeR1, :) = [];
+Probe2_PCs_R1(:, trials2removeR1, :) = [];
+Probe1_PCs_R4(:, trials2removeR4, :) = [];
+Probe2_PCs_R4(:, trials2removeR4, :) = [];
 
 % Reshape into matrices for Uncut storage
 Probe1_PCs_R1_Uncut = reshape(Probe1_PCs_R1, [], size(Probe1_PCs_R1, 3));
@@ -449,11 +251,11 @@ Probe2_PCs_R1_Cut = chop_and_stack_neural_data(permute(Probe2_PCs_R1, [1, 3, 2])
 %% Get the tongue length, FLCs, and LRCs times to save
 SR = 100;
 % Filter Tongue Length
-R1_Tongue = all_length(pre_gc_points-100+1:end, R1_Trials);  % -1s through 4s (500 points)
-R4_Tongue = all_length(pre_gc_points-100+1:end, R4_Trials);
+R1_Tongue_Uncut = all_length(pre_gc_points-100+1:end, R1_Trials);  % -1s through 4s (500 points)
+R4_Tongue_Uncut = all_length(pre_gc_points-100+1:end, R4_Trials);
 
-R1_Tongue_Uncut = R1_Tongue(:,final_R1_trials);
-R4_Tongue_Uncut = R4_Tongue(:,final_R4_trials);
+R1_Tongue_Uncut(:,trials2removeR1) = [];
+R4_Tongue_Uncut(:,trials2removeR4) = [];
 
 FCs_Adj_R1 = ceil(FCs_R1_clean*SR + SR);
 FCs_Adj_R4 = ceil(FCs_R4_clean*SR + SR);
@@ -475,16 +277,16 @@ jaw_vel = kin(sessix).dat(pre_gc_points-100+1:end, condtrix, kinix); % Extract j
 
 % Look at jaw for R4 trials then remove filtered trials
 jaw_R4 = jaw(:, R4_Trials);
-jaw_R4 = jaw_R4(:, final_R4_trials);
+jaw_R4(:, trials2removeR4) = [];
 
 jaw_vel_R4 = jaw_vel(:, R4_Trials);
-jaw_vel_R4 = jaw_vel_R4(:, final_R4_trials);
+jaw_vel_R4(:, trials2removeR4) = [];
 
 jaw_R1 = jaw(:, R1_Trials);
-jaw_R1 = jaw_R1(:, final_R1_trials);
+jaw_R1(:, trials2removeR1) = [];
 
 jaw_vel_R1 = jaw_vel(:, R1_Trials);
-jaw_vel_R1 = jaw_vel_R1(:, final_R1_trials);
+jaw_vel_R1(:, trials2removeR1) = [];
 
 % Normalize the jaw data
 [jaw_R4, jaw_vel_R4, jaw_R1, Jaw_vel_R1] = deal(normalize_trials(jaw_R4, "zscore"), normalize_trials(jaw_vel_R4, "zscore"), normalize_trials(jaw_R1, "zscore"), normalize_trials(jaw_vel_R1, "zscore"));
@@ -533,12 +335,6 @@ if ~exist(outputFolder, 'dir')
     mkdir(outputFolder);
 end
 
-% Save SVD Features
-csvwrite(fullfile(outputFolder, "SVD_Feats_R1_Uncut.csv"), R1_SVD_Features_Uncut);
-csvwrite(fullfile(outputFolder, "SVD_Feats_R4_Uncut.csv"), R4_SVD_Features_Uncut);
-csvwrite(fullfile(outputFolder, "SVD_Feats_R1_Cut.csv"), R1_SVD_Features_Cut);
-csvwrite(fullfile(outputFolder, "SVD_Feats_R4_Cut.csv"), R4_SVD_Features_Cut);
-
 % Save key point features
 csvwrite(fullfile(outputFolder, "Keypoint_Feats_R1_Uncut.csv"), R1_Keypoints_Uncut);
 csvwrite(fullfile(outputFolder, "Keypoint_Feats_R4_Uncut.csv"), R4_Keypoints_Uncut);
@@ -568,17 +364,6 @@ csvwrite(fullfile(outputFolder, "PCA_Probe2_R1_Uncut.csv"), Probe2_PCs_R1_Uncut)
 csvwrite(fullfile(outputFolder, "PCA_Probe2_R4_Uncut.csv"), Probe2_PCs_R4_Uncut);
 csvwrite(fullfile(outputFolder, "PCA_Probe2_R1_Cut.csv"), Probe2_PCs_R1_Cut);
 csvwrite(fullfile(outputFolder, "PCA_Probe2_R4_Cut.csv"), Probe2_PCs_R4_Cut);
-
-% Save the Spike Count Data
-csvwrite(fullfile(outputFolder, "SpkCounts_P1_R1_Uncut.csv"), SpkCounts_P1_R1_Uncut);
-csvwrite(fullfile(outputFolder, "SpkCounts_P1_R4_Uncut.csv"), SpkCounts_P1_R4_Uncut);
-csvwrite(fullfile(outputFolder, "SpkCounts_P2_R1_Uncut.csv"), SpkCounts_P2_R1_Uncut);
-csvwrite(fullfile(outputFolder, "SpkCounts_P2_R4_Uncut.csv"), SpkCounts_P2_R4_Uncut);
-
-csvwrite(fullfile(outputFolder, "SpkCounts_P1_R1_Cut.csv"), SpkCounts_P1_R1_Cut);
-csvwrite(fullfile(outputFolder, "SpkCounts_P1_R4_Cut.csv"), SpkCounts_P1_R4_Cut);
-csvwrite(fullfile(outputFolder, "SpkCounts_P2_R1_Cut.csv"), SpkCounts_P2_R1_Cut);
-csvwrite(fullfile(outputFolder, "SpkCounts_P2_R4_Cut.csv"), SpkCounts_P2_R4_Cut);
 
 % Save Jaw Feats
 csvwrite(fullfile(outputFolder, "JawFeats_R1_Uncut.csv"), jawfeats_R1_Uncut);

@@ -2,7 +2,8 @@
 Data/
 Processed_Encoder/
 Results/
-
+**.csv
+**.fig
 # Ignore Economo Lab Preprocessing files
 Economo-Lab-Preprocessing/
 

@@ -23,28 +23,28 @@ Random.seed!(1234);
 const SSD = StateSpaceDynamics
 
 # path = "C:\\Users\\zachl\\OneDrive\\BU_YEAR1\\Research\\Tudor_Data\\Disengagement_Analysis_2025\\preprocessed_data\\TD13d_2024-11-13\\";  # Probe 2
-path = "C:\\Research\\Encoder_Modeling\\Encoder_Analysis\\Processed_Encoder\\YH1_2023-05-08\\";  # Probe 1
-# path = "C:\\Research\\Encoder_Modeling\\Encoder_Analysis\\Processed_Encoder\\TD10si_2024-07-09\\";  # Probe 1
+path = "C:\\Research\\Encoder_Modeling\\Encoder_Analysis\\Processed_Encoder\\TD13d_2024-11-13\\";  # Probe 2
+# path = "C:\\Research\\Encoder_Modeling\\Encoder_Analysis\\Processed_Encoder\\TD15d_2024-11-26\\";  # Probe 1
+# path = "U:\\eng_research_economo2\\ZFL\\Disengagement_Encoder\\TD13d_2024-11-12\\"
 
-# path = "C:\\Research\\Encoder_Modeling\\Encoder_Analysis\\Processed_Encoder\\TD1d_2023-02-22\\";  # Probe 2
+a = 2
 
-prb = 1;
+if a==1
+    println("Setup for Probe 1")
+    Probe1_R1, Probe2_R1, PCA_P1_R1, PCA_P2_R1, SVD_R1, KP_R1, Jaw_R1, SC_P1_R1, SC_P2_R1 = load_data_encoder(path, "R1");
+    Probe1_R4, Probe2_R4, PCA_P1_R4, PCA_P2_R4, SVD_R4, KP_R4, Jaw_R4, SC_P1_R4, SC_P2_R4 = load_data_encoder(path, "R4");
 
-if prb == 1
-    println("Probe 1 Processing -> Check this!")
-    Probe1_R1, Probe2_R1, PCA_P1_R1, PCA_P2_R1, KP_R1, Jaw_R1 = load_data_encoder_noSVD(path, "R1");
-    Probe1_R4, Probe2_R4, PCA_P1_R4, PCA_P2_R4, KP_R4, Jaw_R4 = load_data_encoder_noSVD(path, "R4");
-
-    Probe1_R1_Cut, Probe2_R1_Cut, PCA_P1_R1_Cut, PCA_P2_R1_Cut, KP_R1_Cut, FCs_R1, LRCs_R1, Tongue_mat_R1, Jaw_R1_Cut  = load_data_encoder_cut_noSVD(path, "R1");
-    Probe1_R4_Cut, Probe2_R4_Cut, PCA_P1_R4_Cut, PCA_P2_R4_Cut, KP_R4_Cut, FCs_R4, LRCs_R4, Tongue_mat_R4, Jaw_R4_Cut = load_data_encoder_cut_noSVD(path, "R4");
+    Probe1_R1_Cut, Probe2_R1_Cut, PCA_P1_R1_Cut, PCA_P2_R1_Cut, SVD_R1_Cut, KP_R1_Cut, FCs_R1, LRCs_R1, Tongue_mat_R1, Jaw_R1_Cut, SC_P1_R1_Cut, SC_P2_R1_Cut  = load_data_encoder_cut(path, "R1");
+    Probe1_R4_Cut, Probe2_R4_Cut, PCA_P1_R4_Cut, PCA_P2_R4_Cut, SVD_R4_Cut, KP_R4_Cut, FCs_R4, LRCs_R4, Tongue_mat_R4, Jaw_R4_Cut, SC_P1_R4_Cut, SC_P2_R4_Cut  = load_data_encoder_cut(path, "R4");
 else
-    println("Probe 2 Processing -> Check this!")
-    Probe11_R1, Probe1_R1, PCA_P11_R1, PCA_P1_R1, KP_R1, Jaw_R1 = load_data_encoder_noSVD(path, "R1");
-    Probe11_R4, Probe1_R4, PCA_P11_R4, PCA_P1_R4, KP_R4, Jaw_R4 = load_data_encoder_noSVD(path, "R4");
+    println("Setup for Probe 2")
+    Probe11_R1, Probe1_R1, PCA_P11_R1, PCA_P1_R1, SVD_R1, KP_R1, Jaw_R1, SC_P11_R1, SC_P1_R1 = load_data_encoder(path, "R1");
+    Probe11_R4, Probe1_R4, PCA_P11_R4, PCA_P1_R4, SVD_R4, KP_R4, Jaw_R4, SC_P11_R4, SC_P1_R4 = load_data_encoder(path, "R4");
 
-    Probe11_R1_Cut, Probe1_R1_Cut, PCA_P11_R1_Cut, PCA_P1_R1_Cut, KP_R1_Cut, FCs_R1, LRCs_R1, Tongue_mat_R1, Jaw_R1_Cut = load_data_encoder_cut_noSVD(path, "R1");
-    Probe11_R4_Cut, Probe1_R4_Cut, PCA_P11_R4_Cut, PCA_P1_R4_Cut, KP_R4_Cut, FCs_R4, LRCs_R4, Tongue_mat_R4, Jaw_R4_Cut = load_data_encoder_cut_noSVD(path, "R4");
+    Probe11_R1_Cut, Probe1_R1_Cut, PCA_P11_R1_Cut, PCA_P1_R1_Cut, SVD_R1_Cut, KP_R1_Cut, FCs_R1, LRCs_R1, Tongue_mat_R1, Jaw_R1_Cut, SC_P11_R1_Cut, SC_P1_R1_Cut  = load_data_encoder_cut(path, "R1");
+    Probe11_R4_Cut, Probe1_R4_Cut, PCA_P11_R4_Cut, PCA_P1_R4_Cut, SVD_R4_Cut, KP_R4_Cut, FCs_R4, LRCs_R4, Tongue_mat_R4, Jaw_R4_Cut, SC_P11_R4_Cut, SC_P1_R4_Cut  = load_data_encoder_cut(path, "R4");
 end
+
 
 
 """
@@ -66,6 +66,19 @@ PCA_P1_R4_Ave = average_PCs(PCA_P1_R4)
 plot(PCA_P1_R4_Ave)
 title!("R4 Neural PCs")
 
+# Check the SVD features
+SVD_R1_Ave = average_PCs(SVD_R1)
+plot(SVD_R1_Ave[:,1:5])
+title!("R1 Motion SVDs")
+plot(SVD_R1_Ave[:,51:55])
+title!("R1 Movie SVDs")
+
+SVD_R4_Ave = average_PCs(SVD_R4)
+plot(SVD_R4_Ave[:,1:5])
+title!("R4 Motion SVDs")
+plot(SVD_R4_Ave[:,51:55])
+title!("R4 Movie SVDs")
+
 # Check cut data
 P1_R1_Ave_Cut = [x[1:200,:] for x in Probe1_R1_Cut if size(x,1) >=200]
 P1_R1_Ave_Cut = ave_vector(P1_R1_Ave_Cut)
@@ -81,6 +94,50 @@ plot(PCA11_Ave)
 PCA_P1_R4_Ave_Cut = [x[1:200,:] for x in PCA_P1_R4_Cut if size(x,1) >=200]
 PCA14_Ave = average_PCs(PCA_P1_R4_Ave_Cut)
 plot(PCA14_Ave)
+
+# Check cut SVD Features
+SVD_R1_Ave = [x[1:200,:] for x in SVD_R1_Cut if size(x,1) >=200]
+SVD_R1_Ave = average_PCs(SVD_R1_Ave)
+plot(SVD_R1_Ave[:,1:5])
+title!("R1 Motion SVDs")
+plot(SVD_R1_Ave[:,51:55])
+title!("R1 Movie SVDs")
+
+SVD_R4_Ave = [x[1:200,:] for x in SVD_R4_Cut if size(x,1) >=200]
+SVD_R4_Ave = average_PCs(SVD_R4_Ave)
+plot(SVD_R4_Ave[:,1:5])
+title!("R4 Motion SVDs")
+plot(SVD_R4_Ave[:,51:55])
+title!("R4 Movie SVDs")
+
+
+"""
+Visualize the spiking data
+"""
+# Stack into a 3D array: timepoints × neurons × trials
+data_stack = stack(SC_P1_R1, dims=3)  # result is 600×46×152
+neuron_avg = mean(data_stack, dims=3)  # still 600×46×1
+neuron_avg_R1 = dropdims(neuron_avg, dims=3)
+
+# Assuming neuron_avg is 46×600 (neurons × timepoints)
+heatmap(permutedims(neuron_avg_R1),
+    xlabel = "Time (samples)",
+    ylabel = "Neuron",
+    colorbar_title = "Activity",
+    title = "Trial-Averaged Neural Binned Spikes R1")
+
+
+# Stack into a 3D array: timepoints × neurons × trials
+data_stack = stack(SC_P1_R4, dims=3)  # result is 600×46×152
+neuron_avg = mean(data_stack, dims=3)  # still 600×46×1
+neuron_avg_R4 = dropdims(neuron_avg, dims=3)
+
+# Assuming neuron_avg is 46×600 (neurons × timepoints)
+heatmap(permutedims(neuron_avg_R4),
+    xlabel = "Time (samples)",
+    ylabel = "Neuron",
+    colorbar_title = "Activity",
+    title = "Trial-Averaged Neural Binned Spikes R4")
 
 
 
@@ -129,8 +186,11 @@ dif = 101-lags;
 X_R1 = [X[100-lags:end,:] for X in Jaw_R1]
 X_R4 = [X[100-lags:end,:] for X in Jaw_R4]
 
-Y_R1 = [Y[100-lags:end,:] for Y in PCA_P1_R1]
-Y_R4 = [Y[100-lags:end,:] for Y in PCA_P1_R4]
+# Y_R1 = [Y[100-lags:end,1:2] for Y in PCA_P1_R1]
+# Y_R4 = [Y[100-lags:end,1:2] for Y in PCA_P1_R4]
+
+Y_R1 = [Y[100-lags:end,:] for Y in SC_P1_R1]
+Y_R4 = [Y[100-lags:end,:] for Y in SC_P1_R4]
 
 X_R1_kernel = kernelize_past_features(X_R1, lags)
 X_R4_kernel = kernelize_past_features(X_R4, lags)
@@ -171,11 +231,11 @@ X_eng = cat(X_R1, X_R4, dims=1)
 Y_eng = cat(Y_R1, Y_R4, dims=1)
 
 
-X_R1 = [X_R1_AR[i][LRCs_R1[i]-107:(LRCs_R1[i]-dif), :] for i in eachindex(X_R1_AR)]
-X_R4 = [X_R4_AR[i][LRCs_R4[i]-107:(LRCs_R4[i]-dif), :]  for i in eachindex(X_R4_AR)]
+X_R1 = [X_R1_kernel[i][(LRCs_R1[i]-dif-5):(LRCs_R1[i]-dif), :] for i in eachindex(X_R1_kernel)]
+X_R4 = [X_R4_kernel[i][(LRCs_R4[i]-dif-5):(LRCs_R4[i]-dif), :] for i in eachindex(X_R4_kernel)]
 
-Y_R1 = [Y_R1_AR[i][LRCs_R1[i]-107:(LRCs_R1[i]-dif), :]  for i in eachindex(Y_R1_AR)]
-Y_R4 = [Y_R4_AR[i][LRCs_R4[i]-107:(LRCs_R4[i]-dif), :]  for i in eachindex(Y_R4_AR)]
+Y_R1 = [Y_R1_trimmed[i][(LRCs_R1[i]-dif-5):(LRCs_R1[i]-dif), :] for i in eachindex(Y_R1_trimmed)]
+Y_R4 = [Y_R4_trimmed[i][(LRCs_R4[i]-dif-5):(LRCs_R4[i]-dif), :] for i in eachindex(Y_R4_trimmed)]
 
 X_diseng = cat(X_R1, X_R4, dims=1)
 Y_diseng = cat(Y_R1, Y_R4, dims=1)
@@ -185,14 +245,16 @@ Y_diseng = cat(Y_R1, Y_R4, dims=1)
 X_eng = vcat(X_eng...)
 Y_eng = vcat(Y_eng...)
 
-β_eng = weighted_ridge_regression(X_eng, Y_eng, 0.01)
+m_eng = PoissonRegressionEmission(input_dim = size(X_eng,2), output_dim=size(Y_eng,2), include_intercept=true)
+
+SSD.fit!(m_eng, X_eng, Y_eng)
 
 
 X_diseng = vcat(X_diseng...)
 Y_diseng = vcat(Y_diseng...)
 
-β_diseng = weighted_ridge_regression(X_diseng, Y_diseng, 0.01)
-
+m_diseng = PoissonRegressionEmission(input_dim = size(X_diseng,2), output_dim=size(Y_diseng,2), include_intercept=true)
+SSD.fit!(m_diseng, X_diseng, Y_diseng)
 
 
 """
@@ -213,7 +275,8 @@ X = cat(X_R1, X_R4, dims=1)
 # X = cat(SVD_R1_selected, SVD_R4_selected, dims=1)
 # X = cat(KP_R1_Cut, KP_R4_Cut, dims=1)
 # X = [x[97:end, :] for x in X]
-Y = cat(PCA_P1_R1_Cut, PCA_P1_R4_Cut, dims=1)
+Y = cat(SC_P1_R1_Cut, SC_P1_R4_Cut, dims=1)
+
 # Y = cat(Probe1_R1_Cut, Probe1_R4_Cut, dims=1)
 Y = [y[100-lags:end, :] for y in Y]
 
@@ -242,14 +305,16 @@ Y_ready = permutedims.(Y_trim)
 
 include(".\\Julia\\Zutils.jl")
 # Initialize the Gaussian HMM-GLM
-model = SwitchingGaussianRegression(;K=2, input_dim=size(X_ready[1])[1], output_dim=size(Y_ready[1])[1], include_intercept=true)
+input_dim = size(X_ready[1])[1]
+output_dim = size(Y_ready[1])[1]
+model = SwitchingPoissonRegression(;K=2, input_dim=size(X_ready[1])[1], output_dim=size(Y_ready[1])[1], include_intercept=true)
 
-model.B[1].β = β_eng
-# model.B[2].β = β_diseng
-model.B[2].β = β_diseng
+model.B[1] = m_eng
+model.B[2] = m_diseng
+# model.B[2].β = randn(input_dim, output_dim)
 
-# model.B[1].λ = 10000
-# model.B[2].λ = 10000
+# model.B[1].λ = 0.01
+# model.B[2].λ = 0.01
 # Initialize the model with domain knowledge
 # model.A = [0.99 0.005 0.005; 0.005 0.99 0.005; 0.005 0.005 0.99];
 # model.πₖ = [0.4; 0.3; 0.3]
@@ -257,7 +322,48 @@ model.A = [0.9999 0.0001; 0.0001 0.9999]
 model.πₖ = [0.0001; 0.9999]
 
 
-lls = fit_custom!(model, Y_ready, X_ready, max_iters=300)
+lls = SSD.fit!(model, Y_ready, X_ready, max_iters=100)
+
+function SSD.emission_loglikelihoods!(model::HiddenMarkovModel, FB_storage::SSD.ForwardBackward, data...)
+    log_likelihoods = FB_storage.loglikelihoods
+
+    # Calculate observation wise likelihoods for all states
+    for k in 1:model.K
+        log_likelihoods[k, :] .= SSD.loglikelihood(model.B[k], data...)
+    end
+end
+
+function SSD.loglikelihood(
+    model::SSD.PoissonRegressionEmission,
+    Φ::Matrix{<:Real},
+    Y::Matrix{<:Real},
+    w::Vector{Float64}=ones(size(Y, 1)),
+)
+
+    println(model.include_intercept)  
+    # add intercept if specified
+    println(size(Φ, 2))
+    println(size(model.β,1))
+
+    if model.include_intercept && size(Φ, 2) == size(model.β,1) - 1
+        Φ = hcat(ones(size(Φ, 1)), Φ)
+    end
+    # calculate log likelihood
+    η = clamp.(Φ * model.β, -30, 30)
+    rate = exp.(η)
+
+    obs_wise_loglikelihood = w .* (Y .* log.(rate) .- rate .- SSD.loggamma.(Int.(Y) .+ 1))
+    
+
+    # sum across independent feature log likelihoods if mulitple features
+    if size(obs_wise_loglikelihood, 2) > 1
+        obs_wise_loglikelihood = sum(obs_wise_loglikelihood, dims=2)
+    end
+
+    return obs_wise_loglikelihood
+end
+
+
 
 plot(lls)
 title!("Training Log-Likelihood")
@@ -284,8 +390,8 @@ Plot the trial averaged inference
 X_R1 = [X[100-lags:300,:] for X in Jaw_R1]
 X_R4 = [X[100-lags:300,:] for X in Jaw_R4]
 
-Y_R1 = [Y[100-lags:300,:] for Y in PCA_P1_R1]
-Y_R4 = [Y[100-lags:300,:] for Y in PCA_P1_R4]
+Y_R1 = [Y[100-lags:300,:] for Y in SC_P1_R1]
+Y_R4 = [Y[100-lags:300,:] for Y in SC_P1_R4]
 
 X_R1_kernel = kernelize_past_features(X_R1, lags)
 X_R4_kernel = kernelize_past_features(X_R4, lags)
@@ -374,34 +480,33 @@ Y_R4_trimmed;
 R1_States;
 R4_States;
 
-# Get predictions at each time point from the correct emission model based on the state
-trial = 9;
+# # Get predictions at each time point from the correct emission model based on the state
+# trial = 1;
 
-X_trial = X_R4_kernel[trial];
-Y_trial = Y_R4_trimmed[trial];
-T, D = size(X_trial)
-_, O = size(Y_trial)  # O = output dimension
+# X_trial = X_R4_kernel[trial];
+# Y_trial = Y_R4_trimmed[trial];
+# T, D = size(X_trial)
+# _, O = size(Y_trial)  # O = output dimension
 
-# Initialize prediction matrix
-y_pred = zeros(T, O)
+# # Initialize prediction matrix
+# y_pred = zeros(T, O)
 
-for i in 1:size(X_trial,1)
-   # Find the state
-   state = exp(R4_States[trial,i])
+# for i in 1:size(X_trial,1)
+#    # Find the state
+#    state = exp(R4_States[trial,i])
 
-   N, D = size(X_trial)
-   X_bias = hcat(ones(N), X_trial)  # Add intercept column
-#    X_bias = X_trial
+#    N, D = size(X_trial)
+# #    X_bias = hcat(ones(N), X_trial)  # Add intercept column
 
-   if state == 1.0
-    y_pred[i,:] = (reshape(X_bias[i, :], 1,:) * model.B[1].β)
-   else
-    y_pred[i,:] = (reshape(X_bias[i, :], 1,:) * model.B[2].β)
-   end
-end
+#    if state == 1.0
+#     y_pred[i,:] = (reshape(X_trial[i, :], 1,:) * model.B[1].β)
+#    else
+#     y_pred[i,:] = (reshape(X_trial[i, :], 1,:) * model.B[2].β)
+#    end
+# end
 
-plot(Y_trial[:,1], label="PC1")
-plot!(y_pred[:,1], label="Pred PC1")
+# plot(Y_trial[:,1], label="PC1")
+# plot!(y_pred[:,1], label="Pred PC1")
 
 
 
@@ -410,17 +515,17 @@ plot!(y_pred[:,1], label="Pred PC1")
 """
 Visualization of wtf is going on
 """
-trial = 9
-x = 1:length(R1_States[trial, :])
+trial = 5
+x = 1:length(R4_States[trial, :])
 
-X_R1_trimmed = trim_Y_train_past(X_R1, lags)
+X_R1_trimmed = trim_Y_train_past(X_R4, lags)
 
 
 plot(
-    plot(x, 1 .- exp.(R1_States[trial, :]), label="State Inference", ylabel="State", legend=:topright, title="Single Trial Inference and Features"),
-    plot(x, Tongue_R1[:, trial], label="Tongue", ylabel="Tongue", legend=:topright),
-    plot(x, X_R1_trimmed[trial][:,1], label="Jaw Pos") |> p -> plot!(p, x, X_R1_trimmed[trial][:,2], label="Jaw Vel", ylabel="Jaw Feats"),
-    plot(x, Y_R1_trimmed[trial][:,:], label=false),
+    plot(x, 1 .- exp.(R4_States[trial, :]), label="State Inference", ylabel="State", legend=:topright, title="Single Trial Inference and Features"),
+    plot(x, Tongue_R4[:, trial], label="Tongue", ylabel="Tongue", legend=:topright),
+    plot(x, X_R4_kernel[trial][:,1], label="Jaw Pos") |> p -> plot!(p, x, X_R4_kernel[trial][:,2], label="Jaw Vel", ylabel="Jaw Feats"),
+    plot(x, Y_R4_trimmed[trial][:,:], label=false),
     layout = @layout([a; b; c; d]),
     link = :x,
     size=(800,600),
@@ -440,18 +545,13 @@ plot(
 VITERBI STATES SAVED
 """
 
-R4_States_Vit_df = DataFrame(R4_Vit, :auto)
-R1_States_Vit_df = DataFrame(R1_Vit, :auto)
-R4_States_df = DataFrame(R4_States, :auto)
-R1_States_df = DataFrame(R1_States, :auto)
-
+R4_States_df = DataFrame(R4_Vit, :auto)
+R1_States_df = DataFrame(R1_Vit, :auto)
 
 # Write DataFrames to CSV without headers
-CSV.write(joinpath("Results_423\\YH1_05_08\\Jaw2PC" , "R16_Tongue_Reg.csv"), R4_Tongue_df; header=false)
-CSV.write(joinpath("Results_423\\YH1_05_08\\Jaw2PC"  , "R1_Tongue_Reg.csv"), R1_Tongue_df; header=false)
-CSV.write(joinpath("Results_423\\YH1_05_08\\Jaw2PC"  , "R16_States_Reg.csv"), R4_States_df; header=false)
-CSV.write(joinpath("Results_423\\YH1_05_08\\Jaw2PC"  , "R1_States_Reg.csv"), R1_States_df; header=false)
-CSV.write(joinpath("Results_423\\YH1_05_08\\Jaw2PC"  , "R16_States_Vit_Reg.csv"), R4_States_Vit_df; header=false)
-CSV.write(joinpath("Results_423\\YH1_05_08\\Jaw2PC"  , "R1_States_Vit_Reg.csv"), R1_States_Vit_df; header=false)
+CSV.write(joinpath("Results_Poisson\\TD13d_11_13\\Jaw2Spike" , "R4_Tongue_Reg.csv"), R4_Tongue_df; header=false)
+CSV.write(joinpath("Results_Poisson\\TD13d_11_13\\Jaw2Spike"  , "R1_Tongue_Reg.csv"), R1_Tongue_df; header=false)
+CSV.write(joinpath("Results_Poisson\\TD13d_11_13\\Jaw2Spike"  , "R4_States_Reg.csv"), R4_States_df; header=false)
+CSV.write(joinpath("Results_Poisson\\TD13d_11_13\\Jaw2Spike"  , "R1_States_Reg.csv"), R1_States_df; header=false)
 
 

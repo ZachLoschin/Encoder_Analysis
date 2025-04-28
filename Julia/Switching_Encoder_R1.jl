@@ -127,19 +127,15 @@ dif = 101-lags;
 # X_R4 = [X[1:end,:] for X in SVD_R4_selected]
 
 X_R1 = [X[100-lags:end,:] for X in Jaw_R1]
-X_R4 = [X[100-lags:end,:] for X in Jaw_R4]
 
 Y_R1 = [Y[100-lags:end,:] for Y in PCA_P1_R1]
-Y_R4 = [Y[100-lags:end,:] for Y in PCA_P1_R4]
 
 X_R1_kernel = kernelize_past_features(X_R1, lags)
-X_R4_kernel = kernelize_past_features(X_R4, lags)
 
 Y_R1_trimmed = trim_Y_train_past(Y_R1, lags)
-Y_R4_trimmed = trim_Y_train_past(Y_R4, lags)
 
-FCs = cat(FCs_R1, FCs_R4, dims=2)
-LRCs= cat(LRCs_R1, LRCs_R4, dims=1)
+FCs = FCs_R1
+LRCs= LRCs_R1
 
 
 # # Add autoregressive features in Neural acitvity
@@ -162,23 +158,22 @@ LRCs= cat(LRCs_R1, LRCs_R4, dims=1)
 # Y_R4 = [Y_R4_AR[i][1:(FCs_R4[i]-97), :] for i in eachindex(Y_R4_AR)]
 
 X_R1 = [X_R1_kernel[i][1:(FCs_R1[i]-dif), :] for i in eachindex(X_R1_kernel)]
-X_R4 = [X_R4_kernel[i][1:(FCs_R4[i]-dif), :] for i in eachindex(X_R4_kernel)]
 
 Y_R1 = [Y_R1_trimmed[i][1:(FCs_R1[i]-dif), :] for i in eachindex(Y_R1_trimmed)]
-Y_R4 = [Y_R4_trimmed[i][1:(FCs_R4[i]-dif), :] for i in eachindex(Y_R4_trimmed)]
-
-X_eng = cat(X_R1, X_R4, dims=1)
-Y_eng = cat(Y_R1, Y_R4, dims=1)
 
 
-X_R1 = [X_R1_AR[i][LRCs_R1[i]-107:(LRCs_R1[i]-dif), :] for i in eachindex(X_R1_AR)]
-X_R4 = [X_R4_AR[i][LRCs_R4[i]-107:(LRCs_R4[i]-dif), :]  for i in eachindex(X_R4_AR)]
+X_eng = X_R1
+Y_eng = Y_R1
 
-Y_R1 = [Y_R1_AR[i][LRCs_R1[i]-107:(LRCs_R1[i]-dif), :]  for i in eachindex(Y_R1_AR)]
-Y_R4 = [Y_R4_AR[i][LRCs_R4[i]-107:(LRCs_R4[i]-dif), :]  for i in eachindex(Y_R4_AR)]
 
-X_diseng = cat(X_R1, X_R4, dims=1)
-Y_diseng = cat(Y_R1, Y_R4, dims=1)
+# X_R1 = [X_R1_AR[i][LRCs_R1[i]-107:(LRCs_R1[i]-dif), :] for i in eachindex(X_R1_AR)]
+# X_R4 = [X_R4_AR[i][LRCs_R4[i]-107:(LRCs_R4[i]-dif), :]  for i in eachindex(X_R4_AR)]
+
+# Y_R1 = [Y_R1_AR[i][LRCs_R1[i]-107:(LRCs_R1[i]-dif), :]  for i in eachindex(Y_R1_AR)]
+# Y_R4 = [Y_R4_AR[i][LRCs_R4[i]-107:(LRCs_R4[i]-dif), :]  for i in eachindex(Y_R4_AR)]
+
+# X_diseng = cat(X_R1, X_R4, dims=1)
+# Y_diseng = cat(Y_R1, Y_R4, dims=1)
 
 
 # Prefit engaged model
@@ -188,10 +183,10 @@ Y_eng = vcat(Y_eng...)
 β_eng = weighted_ridge_regression(X_eng, Y_eng, 0.01)
 
 
-X_diseng = vcat(X_diseng...)
-Y_diseng = vcat(Y_diseng...)
+# X_diseng = vcat(X_diseng...)
+# Y_diseng = vcat(Y_diseng...)
 
-β_diseng = weighted_ridge_regression(X_diseng, Y_diseng, 0.01)
+# β_diseng = weighted_ridge_regression(X_diseng, Y_diseng, 0.01)
 
 
 
@@ -207,13 +202,12 @@ Set up the switching encoder model
 # SVD_R4_selected = [hcat(x[100-lags:end, 1], x[100-lags:end, 2]) for x in SVD_R4_Cut]
 
 X_R1 = [X[100-lags:end,:] for X in Jaw_R1_Cut]
-X_R4 = [X[100-lags:end,:] for X in Jaw_R4_Cut]
-X = cat(X_R1, X_R4, dims=1)
+X = X_R1
 
 # X = cat(SVD_R1_selected, SVD_R4_selected, dims=1)
 # X = cat(KP_R1_Cut, KP_R4_Cut, dims=1)
 # X = [x[97:end, :] for x in X]
-Y = cat(PCA_P1_R1_Cut, PCA_P1_R4_Cut, dims=1)
+Y = PCA_P1_R1_Cut
 # Y = cat(Probe1_R1_Cut, Probe1_R4_Cut, dims=1)
 Y = [y[100-lags:end, :] for y in Y]
 
@@ -246,7 +240,7 @@ model = SwitchingGaussianRegression(;K=2, input_dim=size(X_ready[1])[1], output_
 
 model.B[1].β = β_eng
 # model.B[2].β = β_diseng
-model.B[2].β = β_diseng
+# model.B[2].β = β_diseng
 
 # model.B[1].λ = 10000
 # model.B[2].λ = 10000
@@ -282,16 +276,12 @@ Plot the trial averaged inference
 # X_R4 = [X[100-lags:300,:] for X in SVD_R4_selected]
 
 X_R1 = [X[100-lags:300,:] for X in Jaw_R1]
-X_R4 = [X[100-lags:300,:] for X in Jaw_R4]
 
 Y_R1 = [Y[100-lags:300,:] for Y in PCA_P1_R1]
-Y_R4 = [Y[100-lags:300,:] for Y in PCA_P1_R4]
 
 X_R1_kernel = kernelize_past_features(X_R1, lags)
-X_R4_kernel = kernelize_past_features(X_R4, lags)
 
 Y_R1_trimmed = trim_Y_train_past(Y_R1, lags)
-Y_R4_trimmed = trim_Y_train_past(Y_R4, lags)
 
 # # Add autoregressive features in Neural acitvity
 # X_R1_Cut = [x[2:end, :] for x in X_R1_kernel];  # Remove frist row since first timepoints can't be predicted
@@ -316,47 +306,37 @@ Y_R4_trimmed = trim_Y_train_past(Y_R4, lags)
 YY = permutedims.(Y_R1_trimmed)
 XX = permutedims.(X_R1_kernel)
 
-YY_R4 = permutedims.(Y_R4_trimmed)
-XX_R4 = permutedims.(X_R4_kernel)
 
 
 FB_R1 = label_data(model, YY, XX);
-FB_R4 = label_data(model, YY_R4, XX_R4);
 
 V1 = SSD.viterbi(model, YY, XX);
-V4 = SSD.viterbi(model, YY_R4, XX_R4);
 
 
 # Extract γ[1, :] for each K in OO
 γ_vectors_R1 = [FB_R1[K].γ[1, :] for K in eachindex(FB_R1)]
 γ_mean_R1 = mean(exp.(hcat(γ_vectors_R1...)), dims=2)
 
-γ_vectors_R4 = [FB_R4[K].γ[1, :] for K in eachindex(FB_R4)]
-γ_mean_R4 = mean(exp.(hcat(γ_vectors_R4...)), dims=2)
 
 plot(γ_mean_R1; label="R1")
-plot!(γ_mean_R4; label="R4")
 title!("State Inference")
 ylabel!("State Probability")
 xlabel!("Time")
 
 Tongue_R1 = Tongue_mat_R1[dif:300, :];
-Tongue_R4 = Tongue_mat_R4[dif:300, :];
 
 # Save the data to export to MATLAB figure making
-R4_Tongue = permutedims(hcat(Tongue_R4...))
 R1_Tongue = permutedims(hcat(Tongue_R1...))
-R4_States = permutedims(hcat(γ_vectors_R4...))
 R1_States = permutedims(hcat(γ_vectors_R1...))
 
-R4_Vit = permutedims(hcat(V4...))
+
 R1_Vit = permutedims(hcat(V1...))
 
 # Convert matrices to DataFrames, using :auto for column names (if you don't want specific column names)
-Tongue_R4 = Tongue_R4[1:201, :];
+
 Tongue_R1 = Tongue_R1[1:201, :];
 
-R4_Tongue_df = DataFrame(permutedims(Tongue_R4), :auto)
+
 R1_Tongue_df = DataFrame(permutedims(Tongue_R1), :auto)
 
 
@@ -366,16 +346,16 @@ Look at the encoding accuracy
 
 # Here is the data
 X_R1_kernel;
-X_R4_kernel;
+
 Y_R1_trimmed;
-Y_R4_trimmed;
+
 
 # Here are the states
 R1_States;
-R4_States;
+
 
 # Get predictions at each time point from the correct emission model based on the state
-trial = 9;
+trial = 40;
 
 X_trial = X_R4_kernel[trial];
 Y_trial = Y_R4_trimmed[trial];
@@ -410,7 +390,7 @@ plot!(y_pred[:,1], label="Pred PC1")
 """
 Visualization of wtf is going on
 """
-trial = 9
+trial = 2
 x = 1:length(R1_States[trial, :])
 
 X_R1_trimmed = trim_Y_train_past(X_R1, lags)
@@ -440,18 +420,15 @@ plot(
 VITERBI STATES SAVED
 """
 
-R4_States_Vit_df = DataFrame(R4_Vit, :auto)
+
 R1_States_Vit_df = DataFrame(R1_Vit, :auto)
-R4_States_df = DataFrame(R4_States, :auto)
 R1_States_df = DataFrame(R1_States, :auto)
 
 
 # Write DataFrames to CSV without headers
-CSV.write(joinpath("Results_423\\YH1_05_08\\Jaw2PC" , "R16_Tongue_Reg.csv"), R4_Tongue_df; header=false)
-CSV.write(joinpath("Results_423\\YH1_05_08\\Jaw2PC"  , "R1_Tongue_Reg.csv"), R1_Tongue_df; header=false)
-CSV.write(joinpath("Results_423\\YH1_05_08\\Jaw2PC"  , "R16_States_Reg.csv"), R4_States_df; header=false)
-CSV.write(joinpath("Results_423\\YH1_05_08\\Jaw2PC"  , "R1_States_Reg.csv"), R1_States_df; header=false)
-CSV.write(joinpath("Results_423\\YH1_05_08\\Jaw2PC"  , "R16_States_Vit_Reg.csv"), R4_States_Vit_df; header=false)
-CSV.write(joinpath("Results_423\\YH1_05_08\\Jaw2PC"  , "R1_States_Vit_Reg.csv"), R1_States_Vit_df; header=false)
+
+CSV.write(joinpath("Results_423\\TD10si_07_09\\Jaw2PC"  , "R1_Tongue_Reg.csv"), R1_Tongue_df; header=false)
+CSV.write(joinpath("Results_423\\TD10si_07_09\\Jaw2PC"  , "R1_States_Reg.csv"), R1_States_df; header=false)
+CSV.write(joinpath("Results_423\\TD10si_07_09\\Jaw2PC"  , "R1_States_Vit_Reg.csv"), R1_States_Vit_df; header=false)
 
 
