@@ -26,6 +26,7 @@ params.nLicks              = 20; % number of post go cue licks to calculate medi
 % explore lowering this to aroiund 0.5
 params.lowFR               = 1; % remove clusters with firing rates across all trials less than this val
 
+% params.condition(1) = {'hit==1'};
 params.condition(1) = {'hit==1 | hit==0' };    % left to right         % right hits, no stim, aw off
 params.condition(end+1) = {'hit==1 & trialTypes == 1& rewardedLick == 1'};    % left to right         % right hits, no stim, aw off
 params.condition(end+1) = {'hit==1 & trialTypes == 2& rewardedLick == 1'};    % left to right         % right hits, no stim, aw off
@@ -34,7 +35,7 @@ params.condition(end+1) = {'hit==1 & trialTypes == 1& rewardedLick == 4'};    % 
 params.condition(end+1) = {'hit==1 & trialTypes == 2& rewardedLick == 4'};    % left to right         % right hits, no stim, aw off
 params.condition(end+1) = {'hit==1 & trialTypes == 3& rewardedLick == 4'};    % left to right         % right hits, no stim, aw off
 params.condition(end+1) = {'hit==1 & rewardedLick == 1'};    % left to right         % right hits, no stim, aw off
-params.condition(end+1) = {'hit==1 & rewardedLick == 6'};    % left to right         % right hits, no stim, aw off
+params.condition(end+1) = {'hit==1 & rewardedLick == 4'};    % left to right         % right hits, no stim, aw off
 params.condition(end+1) = {'hit==1' };    % left to right         % right hits, no stim, aw off
 
 % Take this big window for z-scoring to baseline
@@ -63,7 +64,7 @@ params.fa = false;         % if true, reduces neural dimensions to 10 with facto
 params.bctype = 'reflect'; % options are : reflect  zeropad  none
 
 %% SPECIFY DATA TO LOAD
-datapth = 'C:\Research\Encoder_Modeling\Encoder_Analysis\Data\processed sessions\r1';
+datapth = 'C:\Research\Encoder_Modeling\Encoder_Analysis\Data\processed sessions\r14';
 meta = [];
 
 meta = loadTD(meta,datapth);
@@ -328,7 +329,7 @@ sessionDate = meta.date;
 % Construct the output folder path
 outputFolder = fullfile( ...
     'C:\Research\Encoder_Modeling\Encoder_Analysis\Processed_Encoder', ...
-    [sessionName '_' sessionDate]);
+    [sessionName '_' sessionDate 'TrialType1']);
 
 % Create the output folder if it does not exist
 if ~exist(outputFolder, 'dir')

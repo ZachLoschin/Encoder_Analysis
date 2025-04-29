@@ -26,8 +26,12 @@ const SSD = StateSpaceDynamics
 # path = "C:\\Research\\Encoder_Modeling\\Encoder_Analysis\\Processed_Encoder\\YH1_2023-05-08\\";  # Probe 1
 # path = "C:\\Research\\Encoder_Modeling\\Encoder_Analysis\\Processed_Encoder\\TD10si_2024-07-09\\";  # Probe 1
 
-session = "YH1_2023-05-08TrialType1\\"
-session_save = "YH1_05_08_TrialType1"
+# session = "TD1d_2023-02-22\\"
+# session_save = "TD1d_02_22"
+
+session = "YH1_2023-05-08\\"
+session_save = "YH1_05_08"
+
 path = "C:\\Research\\Encoder_Modeling\\Encoder_Analysis\\Processed_Encoder\\" *session;  # Probe 2
 
 prb = 1;
@@ -116,52 +120,32 @@ end
 """
 Prefit the encoder models
 """
-lags=4
+lags=5
+leads = 5
 dif = 101-lags;
 
+# Get enough data to create kernel and start at GC still
+# X_R1 = [X[100-lags:end,:] for X in Jaw_R1]
+# X_R4 = [X[100-lags:end,:] for X in Jaw_R4]
 
 
-# SVD_R1_selected = [hcat(x[100-lags:end, 1], x[100-lags:end, 2]) for x in SVD_R1]
-# SVD_R4_selected = [hcat(x[100-lags:end, 1], x[100-lags:end, 2]) for x in SVD_R4]
 
-# # Get the uncut data labeling and averaging
-# X_R1 = [X[1:end,:] for X in SVD_R1_selected]
-# X_R4 = [X[1:end,:] for X in SVD_R4_selected]
+X_R1 = [X[100-lags:end,:] for X in KP_R1]
+X_R4 = [X[100-lags:end,:] for X in KP_R4]
 
-X_R1 = [X[100-lags:end,:] for X in Jaw_R1]
-X_R4 = [X[100-lags:end,:] for X in Jaw_R4]
 
 Y_R1 = [Y[100-lags:end,:] for Y in PCA_P1_R1]
 Y_R4 = [Y[100-lags:end,:] for Y in PCA_P1_R4]
 
-X_R1_kernel = kernelize_past_features(X_R1, lags)
-X_R4_kernel = kernelize_past_features(X_R4, lags)
+X_R1_kernel = kernelize_window_features(X_R1)
+X_R4_kernel = kernelize_window_features(X_R4)
 
-Y_R1_trimmed = trim_Y_train_past(Y_R1, lags)
-Y_R4_trimmed = trim_Y_train_past(Y_R4, lags)
+Y_R1_trimmed = kernelize_window_features(Y_R1)
+Y_R4_trimmed = kernelize_window_features(Y_R4)
 
 FCs = cat(FCs_R1, FCs_R4, dims=2)
 LRCs= cat(LRCs_R1, LRCs_R4, dims=1)
 
-
-# # Add autoregressive features in Neural acitvity
-# X_R1_Cut = [x[2:end, :] for x in X_R1_kernel];  # Remove frist row since first timepoints can't be predicted
-# X_R4_Cut = [x[2:end, :] for x in X_R4_kernel];
-
-# Y_R1_Cut = [y[1:end-1, :] for y in Y_R1_trimmed];  # Remove last row since there is no end+1 timepoint.
-# Y_R4_Cut = [y[1:end-1, :] for y in Y_R4_trimmed];
-
-# Y_R1_AR = [y[2:end, :] for y in Y_R1_trimmed];  # Cut first timepoint because it can't be predicted
-# Y_R4_AR = [y[2:end, :] for y in Y_R4_trimmed]; 
-
-# X_R1_AR = [hcat(X_R1_Cut[i], Y_R1_Cut[i]) for i in eachindex(X_R1_Cut)]
-# X_R4_AR = [hcat(X_R4_Cut[i], Y_R4_Cut[i]) for i in eachindex(X_R4_Cut)]
-
-# X_R1 = [X_R1_AR[i][1:(FCs_R1[i]-97), :] for i in eachindex(X_R1_AR)]
-# X_R4 = [X_R4_AR[i][1:(FCs_R4[i]-97), :] for i in eachindex(X_R4_AR)]
-
-# Y_R1 = [Y_R1_AR[i][1:(FCs_R1[i]-97), :] for i in eachindex(Y_R1_AR)]
-# Y_R4 = [Y_R4_AR[i][1:(FCs_R4[i]-97), :] for i in eachindex(Y_R4_AR)]
 
 X_R1 = [X_R1_kernel[i][1:(FCs_R1[i]-dif), :] for i in eachindex(X_R1_kernel)]
 X_R4 = [X_R4_kernel[i][1:(FCs_R4[i]-dif), :] for i in eachindex(X_R4_kernel)]
@@ -200,15 +184,13 @@ Y_diseng = vcat(Y_diseng...)
 Set up the switching encoder model
 """
 
-# Setup the X and Y variables for switching model -> 97:end cuts out pregc period leaving enough for 4 point kernel
-# SVD_R1_selected = [hcat(x[100-lags:end, 1:20], x[100-lags:end, 51:71]) for x in SVD_R1_Cut]
-# SVD_R4_selected = [hcat(x[100-lags:end, 1:20], x[100-lags:end, 51:71]) for x in SVD_R4_Cut]
 
-# SVD_R1_selected = [hcat(x[100-lags:end, 1], x[100-lags:end, 2]) for x in SVD_R1_Cut]
-# SVD_R4_selected = [hcat(x[100-lags:end, 1], x[100-lags:end, 2]) for x in SVD_R4_Cut]
+# X_R1 = [X[100-lags:end,:] for X in Jaw_R1_Cut]
+# X_R4 = [X[100-lags:end,:] for X in Jaw_R4_Cut]
 
-X_R1 = [X[100-lags:end,:] for X in Jaw_R1_Cut]
-X_R4 = [X[100-lags:end,:] for X in Jaw_R4_Cut]
+
+X_R1 = [X[100-lags:end,:] for X in KP_R1_Cut]
+X_R4 = [X[100-lags:end,:] for X in KP_R4_Cut]
 X = cat(X_R1, X_R4, dims=1)
 
 # X = cat(SVD_R1_selected, SVD_R4_selected, dims=1)
@@ -220,8 +202,8 @@ Y = [y[100-lags:end, :] for y in Y]
 
 # Preprocess by cutting out pre GC times and Kernelizing
 
-X_kern = kernelize_past_features(X, lags)
-Y_trim = trim_Y_train_past(Y, lags)
+X_kern = kernelize_window_features(X, lags)
+Y_trim = kernelize_window_features(Y, lags)
 
 
 # # Add autoregressive features in Neural acitvity
@@ -249,8 +231,8 @@ model.B[1].β = β_eng
 model.B[1].Σ = Σ_eng
 
 
-model.B[2].β = β_diseng
-model.B[2].Σ = Σ_eng
+# model.B[2].β = β_diseng
+# model.B[2].Σ = Σ_eng
 
 
 # model.B[1].λ = 10000
@@ -275,47 +257,24 @@ ylabel!("Log-Likelihood")
 Plot the trial averaged inference
 """
 
-# SVD_R1_selected = [hcat(x[100-lags:end, 1:20], x[100-lags:end, 51:71]) for x in SVD_R1]
-# SVD_R4_selected = [hcat(x[100-lags:end, 1:20], x[100-lags:end, 51:71]) for x in SVD_R4]
 
-# SVD_R1_selected = [hcat(x[100-lags:end, 1], x[100-lags:end, 2]) for x in SVD_R1]
-# SVD_R4_selected = [hcat(x[100-lags:end, 1], x[100-lags:end, 2]) for x in SVD_R4]
+# X_R1 = [X[100-lags:300,:] for X in Jaw_R1]
+# X_R4 = [X[100-lags:300,:] for X in Jaw_R4]
 
 
-# # Get the uncut data labeling and averaging
-# X_R1 = [X[100-lags:300,:] for X in SVD_R1_selected]
-# X_R4 = [X[100-lags:300,:] for X in SVD_R4_selected]
-
-X_R1 = [X[100-lags:300,:] for X in Jaw_R1]
-X_R4 = [X[100-lags:300,:] for X in Jaw_R4]
+X_R1 = [X[100-lags:300,:] for X in KP_R1]
+X_R4 = [X[100-lags:300,:] for X in KP_R4]
 
 Y_R1 = [Y[100-lags:300,:] for Y in PCA_P1_R1]
 Y_R4 = [Y[100-lags:300,:] for Y in PCA_P1_R4]
 
-X_R1_kernel = kernelize_past_features(X_R1, lags)
-X_R4_kernel = kernelize_past_features(X_R4, lags)
+X_R1_kernel = kernelize_window_features(X_R1)
+X_R4_kernel = kernelize_window_features(X_R4)
 
-Y_R1_trimmed = trim_Y_train_past(Y_R1, lags)
-Y_R4_trimmed = trim_Y_train_past(Y_R4, lags)
+Y_R1_trimmed = kernelize_window_features(Y_R1)
+Y_R4_trimmed = kernelize_window_features(Y_R4)
 
-# # Add autoregressive features in Neural acitvity
-# X_R1_Cut = [x[2:end, :] for x in X_R1_kernel];  # Remove frist row since first timepoints can't be predicted
-# X_R4_Cut = [x[2:end, :] for x in X_R4_kernel];
 
-# Y_R1_Cut = [y[1:end-1, :] for y in Y_R1_trimmed];  # Remove last row since there is no end+1 timepoint.
-# Y_R4_Cut = [y[1:end-1, :] for y in Y_R4_trimmed];
-
-# Y_R1_AR = [y[2:end, :] for y in Y_R1_trimmed];  # Cut first timepoint because it can't be predicted
-# Y_R4_AR = [y[2:end, :] for y in Y_R4_trimmed]; 
-
-# X_R1_AR = [hcat(X_R1_Cut[i], Y_R1_Cut[i]) for i in eachindex(X_R1_Cut)]
-# X_R4_AR = [hcat(X_R4_Cut[i], Y_R4_Cut[i]) for i in eachindex(X_R4_Cut)]
-
-# YY = permutedims.(Y_R1_AR)
-# XX = permutedims.(X_R1_AR)
-
-# YY_R4 = permutedims.(Y_R4_AR)
-# XX_R4 = permutedims.(X_R4_AR)
 
 
 YY = permutedims.(Y_R1_trimmed)
@@ -380,7 +339,7 @@ R1_States;
 R4_States;
 
 # Get predictions at each time point from the correct emission model based on the state
-trial = 9;
+trial = 1;
 
 X_trial = X_R4_kernel[trial];
 Y_trial = Y_R4_trimmed[trial];
@@ -399,14 +358,65 @@ for i in 1:size(X_trial,1)
 #    X_bias = X_trial
 
    if state == 1.0
-    y_pred[i,:] = (reshape(X_bias[i, :], 1,:) * model.B[1].β)
+    y_pred[i,:] = (reshape(X_bias[i, :], 1,:) * model.B[2].β)
    else
     y_pred[i,:] = (reshape(X_bias[i, :], 1,:) * model.B[2].β)
    end
 end
 
-plot(Y_trial[:,1], label="PC1")
-plot!(y_pred[:,1], label="Pred PC1")
+PC = 1
+plot(Y_trial[:,PC], label="PC1")
+plot!(y_pred[:,PC], label="Pred PC1")
+
+r2_score(Y_trial[:,1], y_pred[:,1])
+
+
+
+"""
+Assess average PC prediction accuracy
+"""
+# Assume:
+# - X_R4_kernel: Vector of feature matrices (one per trial)
+# - Y_R4_trimmed: Vector of output matrices (one per trial)
+# - R4_States: Vector of state matrices (one per trial)
+# - model.B: Emission models (one per state)
+
+num_trials = length(X_R4_kernel)
+_, O = size(Y_R4_trimmed[1])  # O = number of PCs (output dims)
+
+# Initialize matrix to store R² scores (trials × PCs)
+r2_scores = zeros(num_trials, O)
+
+for trial in 1:num_trials
+    X_trial = X_R4_kernel[trial]
+    Y_trial = Y_R4_trimmed[trial]
+    T, D = size(X_trial)
+
+    # Initialize prediction matrix
+    y_pred = zeros(T, O)
+
+    # Add bias term (intercept)
+    X_bias = hcat(ones(T), X_trial)
+
+    for i in 1:T
+        # Find the state (use exp because you stored log probs?)
+        state = exp(R4_States[trial, i])
+
+        if state == 1.0
+            y_pred[i, :] = reshape(X_bias[i, :], 1, :) * model.B[1].β
+        else
+            y_pred[i, :] = reshape(X_bias[i, :], 1, :) * model.B[2].β
+        end
+    end
+
+    # Now compute R² for each PC
+    for pc in 1:O
+        r2_scores[trial, pc] = r2_score(Y_trial[:, pc], y_pred[:, pc])
+    end
+end
+
+# `r2_scores` now has shape (num_trials × num_PCs)
+
 
 
 
@@ -415,7 +425,7 @@ plot!(y_pred[:,1], label="Pred PC1")
 """
 Visualization of wtf is going on
 """
-trial = 9
+trial = 1
 x = 1:length(R1_States[trial, :])
 
 X_R1_trimmed = trim_Y_train_past(X_R1, lags)
@@ -452,11 +462,11 @@ R1_States_df = DataFrame(R1_States, :auto)
 
 
 # Write DataFrames to CSV without headers
-CSV.write(joinpath("Results_423\\" *session_save* "\\Jaw2PC" , "R16_Tongue_Reg.csv"), R4_Tongue_df; header=false)
-CSV.write(joinpath("Results_423\\" *session_save* "\\Jaw2PC"  , "R1_Tongue_Reg.csv"), R1_Tongue_df; header=false)
-CSV.write(joinpath("Results_423\\" *session_save* "\\Jaw2PC"  , "R16_States_Reg.csv"), R4_States_df; header=false)
-CSV.write(joinpath("Results_423\\" *session_save* "\\Jaw2PC"  , "R1_States_Reg.csv"), R1_States_df; header=false)
-CSV.write(joinpath("Results_423\\" *session_save* "\\Jaw2PC"   , "R16_States_Vit_Reg.csv"), R4_States_Vit_df; header=false)
-CSV.write(joinpath("Results_423\\" *session_save* "\\Jaw2PC"   , "R1_States_Vit_Reg.csv"), R1_States_Vit_df; header=false)
+CSV.write(joinpath("Results_Window\\" *session_save* "\\KP2PC" , "R16_Tongue_Reg.csv"), R4_Tongue_df; header=false)
+CSV.write(joinpath("Results_Window\\" *session_save* "\\KP2PC"  , "R1_Tongue_Reg.csv"), R1_Tongue_df; header=false)
+CSV.write(joinpath("Results_Window\\" *session_save* "\\KP2PC"  , "R16_States_Reg.csv"), R4_States_df; header=false)
+CSV.write(joinpath("Results_Window\\" *session_save* "\\KP2PC"  , "R1_States_Reg.csv"), R1_States_df; header=false)
+CSV.write(joinpath("Results_Window\\" *session_save* "\\KP2PC"   , "R16_States_Vit_Reg.csv"), R4_States_Vit_df; header=false)
+CSV.write(joinpath("Results_Window\\" *session_save* "\\KP2PC"   , "R1_States_Vit_Reg.csv"), R1_States_Vit_df; header=false)
 
 

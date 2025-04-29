@@ -113,8 +113,9 @@ function SSD.update_emissions!(model::SSD.AbstractHMM, FB_storage::SSD.ForwardBa
 
     # check threading speed here
     for k in 1:(model.K)
-        β = weighted_ridge_regression(data..., model.B[1].λ, w=w[:,k])
+        β, Σ = weighted_ridge_regression(data..., model.B[1].λ, w=w[:,k])
         model.B[k].β = β
+        model.B[k].Σ = Σ
     end
 end
 
@@ -134,10 +135,27 @@ function weighted_ridge_regression(X::Matrix{Float64}, Y::Matrix{Float64}, λ::F
     reg = zeros(D + 1, D + 1)
     reg[2:end, 2:end] .= λ
 
+    # Update the WLS fit
     β = (X_bias'Xw + reg) \ (X_bias'Yw)
 
-    return β
+    # Update the WLS variance
+    residuals = Y - X_bias * β
+    Σ = (residuals' * W * residuals) / size(X, 1)
+    Σ = 0.5 * (Σ + Σ') # Ensure symmetry
+
+    return β, Σ
 end
+
+
+
+
+# function post_optimization!(model::GaussianRegressionEmission, opt::RegressionOptimization)
+#     residuals = opt.y - opt.X * model.β
+#     Σ = (residuals' * Diagonal(opt.w) * residuals) / size(opt.X, 1)
+#     model.Σ = 0.5 * (Σ + Σ')  # Ensure symmetry
+#     model.Σ = make_posdef!(model.Σ)
+#     return model.Σ
+# end
 
 
 function fit_and_evaluate(
@@ -1550,6 +1568,35 @@ function kernelize_features(X_train::Vector{Matrix{T}}, lags::Int=4) where T
         processed_features[i] = lagged_features
     end
     
+    return processed_features
+end
+
+
+function kernelize_window_features(X_train::Vector{Matrix{T}}, lags::Int=5, leads::Int=5) where T
+    processed_features = Vector{Matrix{T}}(undef, length(X_train))
+
+    for (i, X) in enumerate(X_train)
+        num_timepoints, num_features = size(X)
+
+        # Define valid time range where full lag and lead context exists
+        start_idx = lags + 1
+        end_idx = num_timepoints - leads
+
+        # Initialize new feature matrix
+        num_new_timepoints = end_idx - start_idx + 1
+        windowed_features = Matrix{T}(undef, num_new_timepoints, num_features * (lags + leads + 1))
+
+        for (j, t) in enumerate(start_idx:end_idx)
+            # Collect lagged, current, and leading feature values
+            feature_vector = vcat((X[t - lag, :] for lag in lags:-1:1)...,   # past (lags -> 1)
+                                  X[t, :],                                   # current
+                                  (X[t + lead, :] for lead in 1:leads)...)    # future (1 -> leads)
+            windowed_features[j, :] = feature_vector
+        end
+
+        processed_features[i] = windowed_features
+    end
+
     return processed_features
 end
 
