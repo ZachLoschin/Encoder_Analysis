@@ -1,7 +1,8 @@
 # Ignore all data files and processed data
 Data/
 Processed_Encoder/
-Results/
+Results**
+
 **.csv
 **.fig
 # Ignore Economo Lab Preprocessing files

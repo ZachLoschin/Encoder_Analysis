@@ -12,10 +12,10 @@ clc;
 close all
 %% Import the state inference and tongue data
 
-R1_States = readmatrix("C:\Research\Encoder_Modeling\Encoder_Analysis\Results_Window\YH1_05_08\KP2PC\R1_States_Reg.csv");  % Load the R1_States matrix
-R4_States = readmatrix("C:\Research\Encoder_Modeling\Encoder_Analysis\Results_Window\YH1_05_08\KP2PC\R16_States_Reg.csv");  % Load the R4_States matrix
-R1_Tongue = readmatrix("C:\Research\Encoder_Modeling\Encoder_Analysis\Results_Window\YH1_05_08\KP2PC\R1_Tongue_Reg.csv");
-R4_Tongue = readmatrix("C:\Research\Encoder_Modeling\Encoder_Analysis\Results_Window\YH1_05_08\KP2PC\R16_Tongue_Reg.csv");
+R1_States = readmatrix("C:\Research\Encoder_Modeling\Encoder_Analysis\Results_Window\YH1_2023_05_08_P1\KP2PC\R1_States_Reg.csv");  % Load the R1_States matrix
+R4_States = readmatrix("C:\Research\Encoder_Modeling\Encoder_Analysis\Results_Window\YH1_2023_05_08_P1\KP2PC\R14_States_Reg.csv");  % Load the R4_States matrix
+R1_Tongue = readmatrix("C:\Research\Encoder_Modeling\Encoder_Analysis\Results_Window\YH1_2023_05_08_P1\KP2PC\R1_Tongue_Reg.csv");
+R4_Tongue = readmatrix("C:\Research\Encoder_Modeling\Encoder_Analysis\Results_Window\YH1_2023_05_08_P1\KP2PC\R14_Tongue_Reg.csv");
 
 % close all
 % R1_Tongue = R1_Tongue';
@@ -37,7 +37,7 @@ All_Tongue = [R4_Tongue; R1_Tongue];
 
 %% Normalize the kinametic data
 All_Tongue = range_normalize_with_nans(All_Tongue);
-All_Tongue(All_Tongue == 0) = NaN;
+% All_Tongue(All_Tongue == 0) = NaN;
 
 % Normalize each row for R4_Tongue and R1_Tongue
 R4_Tongue_norm = (R4_Tongue - nanmin(R4_Tongue, [], 2)) ./ (nanmax(R4_Tongue, [], 2) - nanmin(R4_Tongue, [], 2));

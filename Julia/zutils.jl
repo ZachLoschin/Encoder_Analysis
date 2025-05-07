@@ -82,7 +82,7 @@ end
 function SSD.update_transition_matrix!(
     model::SSD.AbstractHMM, FB_storage_vec::Vector{SSD.ForwardBackward{Float64}}
 )
-    println("Custom transition matrix large sticky")
+    # println("Custom transition matrix large sticky")
     A_temp = zeros(model.K, model.K)
 
     for j in 1:model.K
@@ -105,7 +105,7 @@ end
 
 
 function SSD.update_emissions!(model::SSD.AbstractHMM, FB_storage::SSD.ForwardBackward, data)
-    println("Using WLS")
+    # println("Using WLS")
     # update regression models
     w = exp.(permutedims(FB_storage.γ))
 
@@ -135,6 +135,11 @@ function weighted_ridge_regression(X::Matrix{Float64}, Y::Matrix{Float64}, λ::F
     reg = zeros(D + 1, D + 1)
     reg[2:end, 2:end] .= λ
 
+    A = X_bias' * Xw + reg
+
+    b = X_bias' * Yw
+
+    cond_A = cond(A)
     # Update the WLS fit
     β = (X_bias'Xw + reg) \ (X_bias'Yw)
 
@@ -1278,6 +1283,7 @@ function load_data_encoder_cut_noSVD(path, condition)
     PCA_P2_path = path * "PCA_Probe2_" * condition * "_Cut.csv"
     KP_path = path * "Keypoint_Feats_" * condition * "_Cut.csv"
     FCs_path = path * "FCs_" * condition * ".csv"
+    SCs_path = path * "SCs_" * condition * ".csv"
     LRCs_path = path * "LRCs_" * condition * ".csv"
     Tongue_path = path * "Tongue_" * condition * ".csv"
     JawFeats_path = path * "JawFeats_" * condition * "_Cut.csv"
@@ -1290,6 +1296,7 @@ function load_data_encoder_cut_noSVD(path, condition)
     PCA_P2_mat = Matrix(CSV.read(PCA_P2_path, DataFrame; header=false))
     KP_mat = Matrix(CSV.read(KP_path, DataFrame; header=false))
     FCs_mat = Matrix(CSV.read(FCs_path, DataFrame; header=false))
+    SCs_mat = Matrix(CSV.read(SCs_path, DataFrame; header=false))
     LRCs = vec(Matrix(CSV.read(LRCs_path, DataFrame; header=false)))  # 1D vector of rounded trial lengths
     Tongue_mat = Matrix(CSV.read(Tongue_path, DataFrame; header=false))
     Jaw_mat = Matrix(CSV.read(JawFeats_path, DataFrame; header=false))
@@ -1317,7 +1324,7 @@ function load_data_encoder_cut_noSVD(path, condition)
     Jaw_chunks = chunk_matrix(Jaw_mat, LRCs)
 
 
-    return probe1_chunks, probe2_chunks, PCA_P1_chunks, PCA_P2_chunks, KP_chunks, FCs_mat, LRCs, Tongue_mat, Jaw_chunks
+    return probe1_chunks, probe2_chunks, PCA_P1_chunks, PCA_P2_chunks, KP_chunks, FCs_mat, SCs_mat, LRCs, Tongue_mat, Jaw_chunks
 end
 
 function load_data_encoder_cut(path, condition)
@@ -1572,7 +1579,7 @@ function kernelize_features(X_train::Vector{Matrix{T}}, lags::Int=4) where T
 end
 
 
-function kernelize_window_features(X_train::Vector{Matrix{T}}, lags::Int=5, leads::Int=5) where T
+function kernelize_window_features(X_train::Vector{Matrix{T}}, lags::Int=4, leads::Int=0) where T
     processed_features = Vector{Matrix{T}}(undef, length(X_train))
 
     for (i, X) in enumerate(X_train)
@@ -1588,8 +1595,9 @@ function kernelize_window_features(X_train::Vector{Matrix{T}}, lags::Int=5, lead
 
         for (j, t) in enumerate(start_idx:end_idx)
             # Collect lagged, current, and leading feature values
-            feature_vector = vcat((X[t - lag, :] for lag in lags:-1:1)...,   # past (lags -> 1)
-                                  X[t, :],                                   # current
+            feature_vector = vcat(X[t, :],
+                                    (X[t - lag, :] for lag in lags:-1:1)...,   # past (lags -> 1)
+                                                                  # current
                                   (X[t + lead, :] for lead in 1:leads)...)    # future (1 -> leads)
             windowed_features[j, :] = feature_vector
         end
@@ -1878,7 +1886,7 @@ function fit_switching_encoder!(
     Aggregate_FB_storage = SSD.initialize_forward_backward(model, total_obs)
     
     for iter in 1:max_iters
-        println(iter)
+        # println(iter)
         # broadcast estep!() to all storage structs
         output = SSD.estep!.(Ref(model), zipped_matrices, FB_storage_vec)
 

@@ -11,114 +11,278 @@ clear;
 clc;
 close all
 %% Import the state inference and tongue data
+base_dir = 'C:\Research\Encoder_Modeling\Encoder_Analysis\Results_Test_R14';
+subfolder = '';
 
-R1_States = readmatrix("C:\Research\Encoder_Modeling\Encoder_Analysis\Results_Window\TD1d_02_22\KP2PC\R1_States_Reg.csv");  % Load the R1_States matrix
-R4_States = readmatrix("C:\Research\Encoder_Modeling\Encoder_Analysis\Results_Window\TD1d_02_22\KP2PC\R14_States_Reg.csv");  % Load the R4_States matrix
-R1_Tongue = readmatrix("C:\Research\Encoder_Modeling\Encoder_Analysis\Results_Window\TD1d_02_22\KP2PC\R1_Tongue_Reg.csv");
-R4_Tongue = readmatrix("C:\Research\Encoder_Modeling\Encoder_Analysis\Results_Window\TD1d_02_22\KP2PC\R14_Tongue_Reg.csv");
-% close all
-% R1_Tongue = R1_Tongue';
-% R4_Tongue = R4_Tongue';
+% Get list of all subfolders in base_dir
+session_dirs = dir(base_dir);
+session_dirs = session_dirs([session_dirs.isdir]);  % Keep only directories
+session_dirs = session_dirs(~ismember({session_dirs.name}, {'.', '..'}));  % Remove . and ..
 
-% %% Chop the data to relevant periods
-% start = 400;
-% stop = 800;
-% 
-% R1_States_chopped = R1_States(:, start:stop);
-% R4_States_chopped = R4_States(:, start:stop);
-% R1_Tongue = R1_Tongue(:, start:stop);
-% R4_Tongue = R4_Tongue(:, start:stop);
+for i = 1:length(session_dirs)
+    session_name = session_dirs(i).name;
+    save_dir = fullfile(base_dir, session_name, subfolder);
+    
+    % Load files
+    R1_States   = readmatrix(fullfile(save_dir, 'R1_States_Reg.csv'));
+    R4_States   = readmatrix(fullfile(save_dir, 'R14_States_Reg.csv'));
+    R1_Tongue   = readmatrix(fullfile(save_dir, 'R1_Tongue_Reg.csv'));
+    R4_Tongue   = readmatrix(fullfile(save_dir, 'R14_Tongue_Reg.csv'));
+    PC          = readmatrix(fullfile(save_dir, 'R14_PC_R2_Reg.csv'));
+    
+    % close all
+    % R1_Tongue = R1_Tongue';
+    % R4_Tongue = R4_Tongue';
+    
+    % %% Chop the data to relevant periods
+    % start = 400;
+    % stop = 800;
+    % 
+    % R1_States_chopped = R1_States(:, start:stop);
+    % R4_States_chopped = R4_States(:, start:stop);
+    % R1_Tongue = R1_Tongue(:, start:stop);
+    % R4_Tongue = R4_Tongue(:, start:stop);
+    
+    %% -- Combine the R4 and R1 Datasets and Heatmaps -- %%
+    All_States = exp([R4_States; R1_States]);
+    % All_States = [R4_States; R1_States];
+    All_Tongue = [R4_Tongue; R1_Tongue];
+    
+    %% Normalize the kinametic data
+    All_Tongue = range_normalize_with_nans(All_Tongue);
+    % All_Tongue(All_Tongue == 0) = NaN;
+    
+    % Normalize each row for R4_Tongue and R1_Tongue
+    R4_Tongue_norm = (R4_Tongue - nanmin(R4_Tongue, [], 2)) ./ (nanmax(R4_Tongue, [], 2) - nanmin(R4_Tongue, [], 2));
+    R4_Tongue_norm(R4_Tongue_norm == 0) = NaN;
+    
+    R1_Tongue_norm = (R1_Tongue - nanmin(R1_Tongue, [], 2)) ./ (nanmax(R1_Tongue, [], 2) - nanmin(R1_Tongue, [], 2));
+    R1_Tongue_norm(R1_Tongue_norm == 0) = NaN;
+    
+    %%
+    % Initialize the figure
+    
+    R1_Tongue = R1_Tongue_norm';
+    R4_Tongue = R4_Tongue_norm';
+    R1_States = R1_States';
+    R4_States = R4_States';
+    % All_States = All_States';
+    figure;
+    hold on;
+    
+    % Plotting parameters
+    lw = 0.75;  % Line width
+    px = 75; py = 75;
+    width = 700; height = 800;
+    set(gcf, 'Position', [px, py, width, height]);
+    
+    % Define colors for the conditions
+    R4_color = 'k'; % Black for R4
+    R1_color = 'k'; % Black for R1
+    
+    % Plotting line plots
+    for i = 1:size(R4_Tongue, 2)
+        plot(1:length(R4_Tongue(:, i)), i-1 + R4_Tongue(:, i), R4_color, 'LineWidth', lw);
+    end
+    
+    for i = 1:size(R1_Tongue, 2)
+        plot(1:length(R1_Tongue(:, i)), i-1 + size(R4_Tongue, 2) + R1_Tongue(:, i), R1_color, 'LineWidth', lw);
+    end
+    
+    % Overlay heatmap
+    h = imagesc(1:size(All_States, 2), 1:size(All_States, 1), All_States);
+    
+    % Adjust the colormap to suit your data range
+    colormap("jet");  % You can use 'jet', 'hot', 'cool', or any other colormap
+    % colormap(flipud(linspecer));  % Flip the colormap if needed
+    
+    % Adjust the heatmap properties
+    set(h, 'AlphaData', 0.5); % Adjust transparency to see the line plots underneath
+    
+    % Add a colorbar
+    colorbar;
+    
+    % Add a horizontal line to separate the conditions
+    yline(size(R4_Tongue, 2), 'k-', 'LineWidth', 3);
+    
+    % Add labels or annotations
+    text(-30, size(R4_Tongue, 2) + 2, 'R1', 'FontSize', 12, 'Color', "k");
+    text(-30, size(R4_Tongue, 2) - 2, 'R4', 'FontSize', 12, 'Color', "k");
+    
+    % Set axes limits and labels
+    set(gca, 'YTick', 0:10:260);
+    xlabel('Time (s)');
+    ylabel('Trial Number');
+    
+    % Adjust the x-axis ticks and labels to reflect time in seconds
+    xticks([0 100 200 300 400 500]); % Position of ticks
+    xticklabels({'0', '1', '2', '3', '4', '5'}); % Labels corresponding to time in seconds
+    
+    
+    ylim([0 139]);  % Number of trials
+    
+    
+    % Remove grid lines and tighten the axes
+    box off;
+    axis tight;
+    
+    % Customize ticks and labels to match your style
+    set(gca, 'TickLength', [0 0]);
+    xlim([0 200])
+    % Hold off to finish the plot
+    hold off;
+    
+    title("Single Trial State Estimates: R1 and R4");
+    
+    saveas(gcf, fullfile(save_dir, 'Inference_Heatmap.png'));  % Save current figure as PNG
+    saveas(gcf, fullfile(save_dir, 'Inference_Heatmap.fig'));  % Save as MATLAB .fig file
+    
+    
+    %% PC prediction R2 values
+    PC = PC(1, 1:10);
+    bar(PC)
+    title("Neural PC Encoding R^2")
+    xlabel("Neural PC")
+    ylabel("R^2")
+    ylim([0,1])
+    saveas(gcf, fullfile(save_dir, 'PC_Encoding_R2.png'));
 
-%% -- Combine the R4 and R1 Datasets and Heatmaps -- %%
-All_States = exp([R4_States; R1_States]);
-% All_States = [R4_States; R1_States];
-All_Tongue = [R4_Tongue; R1_Tongue];
+    %% NEW FIGURE %%
 
-%% Normalize the kinametic data
-All_Tongue = range_normalize_with_nans(All_Tongue);
-All_Tongue(All_Tongue == 0) = NaN;
+    engaged_durations = [];
+    disengaged_durations = [];
+    engaged_licks = {};
+    disengaged_licks = {};
+    
+    % Transpose to [timepoints x trials]
+    All_Tongue = All_Tongue';
+    All_States = All_States';
+    
+    nTrials = size(All_Tongue, 2);
+    
+    figure; hold on;
+    set(gcf, 'Position', [100, 100, 800, 800]);
+    
+    % Loop through each trial
+    for trial = 1:nTrials
+        tongue = All_Tongue(:, trial)';
+        states = All_States(:, trial)';
+        
+        % Find lick bouts: stretches of non-NaN values
+        is_valid = ~isnan(tongue);
+        diff_valid = diff([0 is_valid 0]);
+        lick_starts = find(diff_valid == 1);
+        lick_ends   = find(diff_valid == -1) - 1;
+        
+        for i = 1:length(lick_starts)
+            idx = lick_starts(i):lick_ends(i);
 
-% Normalize each row for R4_Tongue and R1_Tongue
-R4_Tongue_norm = (R4_Tongue - nanmin(R4_Tongue, [], 2)) ./ (nanmax(R4_Tongue, [], 2) - nanmin(R4_Tongue, [], 2));
-R4_Tongue_norm(R4_Tongue_norm == 0) = NaN;
+            % Check minimum length requirement
+            if length(idx) < 2
+                continue;  % Skip this bout if it's too short
+            end
 
-R1_Tongue_norm = (R1_Tongue - nanmin(R1_Tongue, [], 2)) ./ (nanmax(R1_Tongue, [], 2) - nanmin(R1_Tongue, [], 2));
-R1_Tongue_norm(R1_Tongue_norm == 0) = NaN;
+            bout = tongue(idx);
+            bout_states = states(idx);
+            
+            % Color based on average state during the bout
+            color = 'r';
+            if mean(bout_states == 1) <= 0.5
+                color = 'b';
+            end
+            
+            % Save the duration
+            duration = length(idx);
+            
+            % Classify based on average state
+            if mean(bout_states == 1) >= 0.5
+                engaged_durations(end+1) = duration;
+                engaged_licks{end+1} = bout;
+            else
+                disengaged_durations(end+1) = duration;
+                disengaged_licks{end+1} = bout;
+            end
+    
+    
+            plot(idx, (trial - 1) + bout, color, 'LineWidth', 1.2);
+        end
+    end
+    
+    xlabel('Time (s)');
+    ylabel('Trial #');
+    title('Engaged (Red) vs Disengaged (Blue) Licks');
+    xticks([0 100 200]);
+    % xticklabels({'0', '1', '2'});
+    % set(gca, 'TickLength', [0 0]);
+    % box off;
+    % ylim([0 nTrials + 1]);
 
-%%
-% Initialize the figure
+    saveas(gcf, fullfile(save_dir, 'Labeled_Licks.png'));  % Save current figure as PNG
+    saveas(gcf, fullfile(save_dir, 'Labeled_Licks.fig'));  % Save as MATLAB .fig file
 
-R1_Tongue = R1_Tongue_norm';
-R4_Tongue = R4_Tongue_norm';
-R1_States = R1_States';
-R4_States = R4_States';
-% All_States = All_States';
-figure;
-hold on;
+    
+    %% Violin plot of Lick Bout Durations
+    % Convert durations to milliseconds
+    engaged_ms = engaged_durations' * 10;
+    disengaged_ms = disengaged_durations' * 10;
+    
+    % Combine into cell array
+    all_data = {engaged_ms, disengaged_ms};
+    
+    % Plot violin plot
+    figure;
+    violin(all_data, {'Engaged', 'Disengaged'}, 'ShowData', true, 'ShowMean', false);
+    
+    ylabel('Lick Duration (ms)');
+    title('Engaged vs Disengaged Lick Bout Durations');
+    set(gca, 'FontSize', 12);
+    
+    % Save figure
+    saveas(gcf, fullfile(save_dir, 'Duration_Comparison_Violin.png'));
 
-% Plotting parameters
-lw = 0.75;  % Line width
-px = 75; py = 75;
-width = 700; height = 800;
-set(gcf, 'Position', [px, py, width, height]);
+    % Perform t-test
+    [~, p, ~, stats] = ttest2(engaged_ms, disengaged_ms);
+    
+    % Create stats table
+    stats_table = table(stats.tstat, stats.df, p, ...
+        'VariableNames', {'t_stat', 'df', 'p_value'});
+    
+    % Save to CSV
+    writetable(stats_table, fullfile(save_dir, 'Duration_Comparison_ttest.csv'));
+    
+    disp('t-test results saved to CSV:');
+    disp(stats_table);
 
-% Define colors for the conditions
-R4_color = 'k'; % Black for R4
-R1_color = 'k'; % Black for R1
 
-% Plotting line plots
-for i = 1:size(R4_Tongue, 2)
-    plot(1:length(R4_Tongue(:, i)), i-1 + R4_Tongue(:, i), R4_color, 'LineWidth', lw);
+    % 
+    % %% Example plots of licks
+    % % How many examples to show
+    % nExamples = 10;
+    % 
+    % % Random indices (protect against too few licks)
+    % nEngaged = min(nExamples, length(engaged_licks));
+    % nDisengaged = min(nExamples, length(disengaged_licks));
+    % 
+    % % Plot engaged licks
+    % figure;
+    % for i = 1:nEngaged
+    %     subplot(2, nExamples, i);
+    %     plot(engaged_licks{i}, 'r', 'LineWidth', 1.5);
+    %     title(['Engaged ' num2str(i)]);
+    %     xlabel('Time'); ylabel('Lick amplitude');
+    % end
+    % 
+    % % Plot disengaged licks
+    % for i = 1:nDisengaged
+    %     subplot(2, nExamples, nExamples + i);
+    %     plot(disengaged_licks{i}, 'b', 'LineWidth', 1.5);
+    %     title(['Disengaged ' num2str(i)]);
+    %     xlabel('Time'); ylabel('Lick amplitude');
+    % end
+    % sgtitle('Example Engaged (Red) vs Disengaged (Blue) Licks');
+
+
 end
-
-for i = 1:size(R1_Tongue, 2)
-    plot(1:length(R1_Tongue(:, i)), i-1 + size(R4_Tongue, 2) + R1_Tongue(:, i), R1_color, 'LineWidth', lw);
-end
-
-% Overlay heatmap
-h = imagesc(1:size(All_States, 2), 1:size(All_States, 1), All_States);
-
-% Adjust the colormap to suit your data range
-colormap("jet");  % You can use 'jet', 'hot', 'cool', or any other colormap
-% colormap(flipud(linspecer));  % Flip the colormap if needed
-
-% Adjust the heatmap properties
-set(h, 'AlphaData', 0.5); % Adjust transparency to see the line plots underneath
-
-% Add a colorbar
-colorbar;
-
-% Add a horizontal line to separate the conditions
-yline(size(R4_Tongue, 2), 'k-', 'LineWidth', 3);
-
-% Add labels or annotations
-text(-30, size(R4_Tongue, 2) + 2, 'R1', 'FontSize', 12, 'Color', "k");
-text(-30, size(R4_Tongue, 2) - 2, 'R4', 'FontSize', 12, 'Color', "k");
-
-% Set axes limits and labels
-set(gca, 'YTick', 0:10:260);
-xlabel('Time (s)');
-ylabel('Trial Number');
-
-% Adjust the x-axis ticks and labels to reflect time in seconds
-xticks([0 100 200 300 400 500]); % Position of ticks
-xticklabels({'0', '1', '2', '3', '4', '5'}); % Labels corresponding to time in seconds
-
-
-ylim([0 139]);  % Number of trials
-
-
-% Remove grid lines and tighten the axes
-box off;
-axis tight;
-
-% Customize ticks and labels to match your style
-set(gca, 'TickLength', [0 0]);
-xlim([0 200])
-% Hold off to finish the plot
-hold off;
-
-title("Single Trial State Estimates: R1 and R4");
 
 
 function normalized_data = normalize_trials(data, method)

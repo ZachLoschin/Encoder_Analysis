@@ -35,7 +35,7 @@ params.condition(end+1) = {'hit==1 & trialTypes == 1& rewardedLick == 4'};    % 
 params.condition(end+1) = {'hit==1 & trialTypes == 2& rewardedLick == 4'};    % left to right         % right hits, no stim, aw off
 params.condition(end+1) = {'hit==1 & trialTypes == 3& rewardedLick == 4'};    % left to right         % right hits, no stim, aw off
 params.condition(end+1) = {'hit==1 & rewardedLick == 1'};    % left to right         % right hits, no stim, aw off
-params.condition(end+1) = {'hit==1 & rewardedLick == 4'};    % left to right         % right hits, no stim, aw off
+params.condition(end+1) = {'hit==1 & rewardedLick == 6'};    % left to right         % right hits, no stim, aw off
 params.condition(end+1) = {'hit==1' };    % left to right         % right hits, no stim, aw off
 
 % Take this big window for z-scoring to baseline
@@ -64,7 +64,7 @@ params.fa = false;         % if true, reduces neural dimensions to 10 with facto
 params.bctype = 'reflect'; % options are : reflect  zeropad  none
 
 %% SPECIFY DATA TO LOAD
-datapth = 'C:\Research\Encoder_Modeling\Encoder_Analysis\Data\processed sessions\r14';
+datapth = 'C:\Research\Encoder_Modeling\Encoder_Analysis\Data\processed sessions\r16';
 meta = [];
 
 meta = loadTD(meta,datapth);
@@ -401,54 +401,54 @@ end
 
 % Save key point features
 csvwrite(fullfile(outputFolder, "Keypoint_Feats_R1_Uncut.csv"), R1_Keypoints_Uncut);
-csvwrite(fullfile(outputFolder, "Keypoint_Feats_R4_Uncut.csv"), R4_Keypoints_Uncut);
+csvwrite(fullfile(outputFolder, "Keypoint_Feats_R16_Uncut.csv"), R4_Keypoints_Uncut);
 csvwrite(fullfile(outputFolder, "Keypoint_Feats_R1_Cut.csv"), R1_Keypoints_Cut);
-csvwrite(fullfile(outputFolder, "Keypoint_Feats_R4_Cut.csv"), R4_Keypoints_Cut);
+csvwrite(fullfile(outputFolder, "Keypoint_Feats_R16_Cut.csv"), R4_Keypoints_Cut);
 
 % Save Neural FRs
 csvwrite(fullfile(outputFolder, "Probe1_R1_Uncut.csv"), probe1_R1_Uncut);
-csvwrite(fullfile(outputFolder, "Probe1_R4_Uncut.csv"), probe1_R4_Uncut);
+csvwrite(fullfile(outputFolder, "Probe1_R16_Uncut.csv"), probe1_R4_Uncut);
 csvwrite(fullfile(outputFolder, "Probe1_R1_Cut.csv"), probe1_R1_Cut);
-csvwrite(fullfile(outputFolder, "Probe1_R4_Cut.csv"), probe1_R4_Cut);
+csvwrite(fullfile(outputFolder, "Probe1_R16_Cut.csv"), probe1_R4_Cut);
 
 
 csvwrite(fullfile(outputFolder, "Probe2_R1_Uncut.csv"), probe2_R1_Uncut);
-csvwrite(fullfile(outputFolder, "Probe2_R4_Uncut.csv"), probe2_R4_Uncut);
+csvwrite(fullfile(outputFolder, "Probe2_R16_Uncut.csv"), probe2_R4_Uncut);
 csvwrite(fullfile(outputFolder, "Probe2_R1_Cut.csv"), probe2_R1_Cut);
-csvwrite(fullfile(outputFolder, "Probe2_R4_Cut.csv"), probe2_R4_Cut);
+csvwrite(fullfile(outputFolder, "Probe2_R16_Cut.csv"), probe2_R4_Cut);
 
 % Save Neural PCs
 csvwrite(fullfile(outputFolder, "PCA_Probe1_R1_Uncut.csv"), Probe1_PCs_R1_Uncut);
-csvwrite(fullfile(outputFolder, "PCA_Probe1_R4_Uncut.csv"), Probe1_PCs_R4_Uncut);
+csvwrite(fullfile(outputFolder, "PCA_Probe1_R16_Uncut.csv"), Probe1_PCs_R4_Uncut);
 csvwrite(fullfile(outputFolder, "PCA_Probe1_R1_Cut.csv"), Probe1_PCs_R1_Cut);
-csvwrite(fullfile(outputFolder, "PCA_Probe1_R4_Cut.csv"), Probe1_PCs_R4_Cut);
+csvwrite(fullfile(outputFolder, "PCA_Probe1_R16_Cut.csv"), Probe1_PCs_R4_Cut);
 
 
 csvwrite(fullfile(outputFolder, "PCA_Probe2_R1_Uncut.csv"), Probe2_PCs_R1_Uncut);
-csvwrite(fullfile(outputFolder, "PCA_Probe2_R4_Uncut.csv"), Probe2_PCs_R4_Uncut);
+csvwrite(fullfile(outputFolder, "PCA_Probe2_R16_Uncut.csv"), Probe2_PCs_R4_Uncut);
 csvwrite(fullfile(outputFolder, "PCA_Probe2_R1_Cut.csv"), Probe2_PCs_R1_Cut);
-csvwrite(fullfile(outputFolder, "PCA_Probe2_R4_Cut.csv"), Probe2_PCs_R4_Cut);
+csvwrite(fullfile(outputFolder, "PCA_Probe2_R16_Cut.csv"), Probe2_PCs_R4_Cut);
 
 % Save Jaw Feats
 csvwrite(fullfile(outputFolder, "JawFeats_R1_Uncut.csv"), jawfeats_R1_Uncut);
-csvwrite(fullfile(outputFolder, "JawFeats_R4_Uncut.csv"), jawfeats_R4_Uncut);
+csvwrite(fullfile(outputFolder, "JawFeats_R16_Uncut.csv"), jawfeats_R4_Uncut);
 
 csvwrite(fullfile(outputFolder, "JawFeats_R1_Cut.csv"), jawfeats_R1_Cut);
-csvwrite(fullfile(outputFolder, "JawFeats_R4_Cut.csv"), jawfeats_R4_Cut);
+csvwrite(fullfile(outputFolder, "JawFeats_R16_Cut.csv"), jawfeats_R4_Cut);
 
 % Save Tongue Length for visualizations
 csvwrite(fullfile(outputFolder, "Tongue_R1.csv"), R1_Tongue_Uncut);
-csvwrite(fullfile(outputFolder, "Tongue_R4.csv"), R4_Tongue_Uncut);
+csvwrite(fullfile(outputFolder, "Tongue_R16.csv"), R4_Tongue_Uncut);
 
 % Save FCs and LRCs
 csvwrite(fullfile(outputFolder, "FCs_R1.csv"), FCs_Adj_R1);
-csvwrite(fullfile(outputFolder, "FCs_R4.csv"), FCs_Adj_R4);
+csvwrite(fullfile(outputFolder, "FCs_R16.csv"), FCs_Adj_R4);
 
 csvwrite(fullfile(outputFolder, "SCs_R1.csv"), SCs_Adj_R1);
-csvwrite(fullfile(outputFolder, "SCs_R4.csv"), SCs_Adj_R4);
+csvwrite(fullfile(outputFolder, "SCs_R16.csv"), SCs_Adj_R4);
 
 csvwrite(fullfile(outputFolder, "LRCs_R1.csv"), LRCs_Adj_R1);
-csvwrite(fullfile(outputFolder, "LRCs_R4.csv"), LRCs_Adj_R4);
+csvwrite(fullfile(outputFolder, "LRCs_R16.csv"), LRCs_Adj_R4);
 
 % Save metadata as a .txt file for record-keeping
 metadataFile = fullfile(outputFolder, 'metadata.txt');

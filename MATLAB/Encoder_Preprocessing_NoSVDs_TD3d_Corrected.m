@@ -138,7 +138,7 @@ all_contacts = obj.bp.ev.lickL;
 for i = 1:obj.bp.Ntrials
     contacts = obj.bp.ev.lickL{i, 1};
     gc = obj.bp.ev.goCue(i);
-    contacts = contacts - gc;
+    contacts = contacts - gc - 0.5051
     all_contacts{i} = contacts;
 end
 
@@ -151,8 +151,8 @@ R1_Trials = R1_Trials(R1_Trials < NTRIALS);
 R4_Trials = R4_Trials(R4_Trials < NTRIALS);
 
 % Filter Tongue Length
-R1_Tongue = all_length((pre_gc_points-100+1):end, R1_Trials);  % -1s through 4s (500 points)
-R4_Tongue = all_length((pre_gc_points-100+1):end, R4_Trials);
+R1_Tongue = all_length((pre_gc_points+50+1):end, R1_Trials);  % -1s through 4s (500 points)
+R4_Tongue = all_length((pre_gc_points+50+1):end, R4_Trials);
 
 % Filter LP Contacts
 R1_Contacts = all_contacts(R1_Trials);  % these contacts are relative to the gc
@@ -176,8 +176,8 @@ LRCs_R4_clean(trials2removeR4) = [];
 
 
 %% Get the keypoints by trial
-R1_Keypoints = pos(101:end, :, R1_Trials);
-R4_Keypoints= pos(101:end, :, R4_Trials);
+R1_Keypoints = pos(101+50:end, :, R1_Trials);
+R4_Keypoints= pos(101+50:end, :, R4_Trials);
 
 R1_Keypoints(:,:,trials2removeR1) = [];
 R4_Keypoints(:,:,trials2removeR4) = [];
