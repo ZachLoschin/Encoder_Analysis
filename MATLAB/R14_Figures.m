@@ -1,17 +1,17 @@
 % Zachary Loschinskey
 % Drs. Mike Economo and Brian DePasquale
-% January 2025
+% 2025
 % Preprocessing file for disengagement analysis
 
-% Heatmap creation for imported state labels and tongue kinematics from
-% julia HMM-GLM analysis
+% Figure creation: Single trial inference, trial averaged inference, PC
+% encoding accuracy, state-labeled licks.
 
 % Read in the data, construct heatmap, overlay lick kinematics
 clear;
 clc;
 close all
 %% Import the state inference and tongue data
-base_dir = 'C:\Research\Encoder_Modeling\Encoder_Analysis\Results_Test_R14';
+base_dir = 'C:\Research\Encoder_Modeling\Encoder_Analysis\Results_Window_R14';
 subfolder = '';
 
 % Get list of all subfolders in base_dir
@@ -79,25 +79,27 @@ for i = 1:length(session_dirs)
     % Define colors for the conditions
     R4_color = 'k'; % Black for R4
     R1_color = 'k'; % Black for R1
-    
-    % Plotting line plots
-    for i = 1:size(R4_Tongue, 2)
-        plot(1:length(R4_Tongue(:, i)), i-1 + R4_Tongue(:, i), R4_color, 'LineWidth', lw);
-    end
-    
-    for i = 1:size(R1_Tongue, 2)
-        plot(1:length(R1_Tongue(:, i)), i-1 + size(R4_Tongue, 2) + R1_Tongue(:, i), R1_color, 'LineWidth', lw);
-    end
-    
+
     % Overlay heatmap
     h = imagesc(1:size(All_States, 2), 1:size(All_States, 1), All_States);
     
+    % Plotting line plots
+    for j = 1:size(R4_Tongue, 2)
+        plot(1:length(R4_Tongue(:, j)), j-1 + R4_Tongue(:, j), R4_color, 'LineWidth', lw);
+    end
+    
+    for j = 1:size(R1_Tongue, 2)
+        plot(1:length(R1_Tongue(:, j)), j-1 + size(R4_Tongue, 2) + R1_Tongue(:, j), R1_color, 'LineWidth', lw);
+    end
+    
+    
+    
     % Adjust the colormap to suit your data range
     colormap("jet");  % You can use 'jet', 'hot', 'cool', or any other colormap
-    % colormap(flipud(linspecer));  % Flip the colormap if needed
+    % colormap(linspecer);  % Flip the colormap if needed
     
     % Adjust the heatmap properties
-    set(h, 'AlphaData', 0.5); % Adjust transparency to see the line plots underneath
+    % set(h, 'AlphaData', 0.5); % Adjust transparency to see the line plots underneath
     
     % Add a colorbar
     colorbar;
@@ -115,11 +117,11 @@ for i = 1:length(session_dirs)
     ylabel('Trial Number');
     
     % Adjust the x-axis ticks and labels to reflect time in seconds
-    xticks([0 100 200 300 400 500]); % Position of ticks
-    xticklabels({'0', '1', '2', '3', '4', '5'}); % Labels corresponding to time in seconds
+    xticks([0 60 110 160 210 260 310 360 410 460 510]); % Position of ticks
+    xticklabels({'-0.1', '0.5', '1', '1.5', '2.0', '2.5', '3.0', '3.5', '4.0', '4.5', '5.0'}); % Labels corresponding to time in seconds
     
-    
-    ylim([0 139]);  % Number of trials
+    nTrials = size(All_States, 1);
+    ylim([0 nTrials]);  % Number of trials
     
     
     % Remove grid lines and tighten the axes
@@ -128,24 +130,55 @@ for i = 1:length(session_dirs)
     
     % Customize ticks and labels to match your style
     set(gca, 'TickLength', [0 0]);
-    xlim([0 200])
+    xlim([0 210])
     % Hold off to finish the plot
     hold off;
     
     title("Single Trial State Estimates: R1 and R4");
-    
-    saveas(gcf, fullfile(save_dir, 'Inference_Heatmap.png'));  % Save current figure as PNG
+    xline(11, '--k', 'LineWidth', 1);  % Add vertical line for GC
+    text(11, -5, 'GC', ...
+        'HorizontalAlignment', 'center', ...
+        'VerticalAlignment', 'bottom', ...
+        'FontSize', 12, ...
+        'Color', 'k');
+    saveas(gcf, fullfile(save_dir, 'Inference_Heatmap.epsc'));  % Save current figure as epsc
     saveas(gcf, fullfile(save_dir, 'Inference_Heatmap.fig'));  % Save as MATLAB .fig file
     
     
+    %% Trial averaged inference plots
+    R1_Inf_Ave = mean(exp(R1_States'));
+    R4_Inf_Ave = mean(exp(R4_States'));
+
+    figure
+    plot(R1_Inf_Ave)
+    hold on
+    plot(R4_Inf_Ave)
+    ylabel("State 1 Probability")
+    xlabel("Time (s)")
+    xticks([0 60 110 160 210]); % Position of ticks
+    xticklabels({'-0.1', '0.5', '1.0', '1.5', '2.0'}); % Labels corresponding to time in seconds
+    xlim([0, 200])
+    title("Trial Averaged Inference")
+    xline(11, "--k", "LineWidth",1)
+    text(11, min([R1_Inf_Ave, R4_Inf_Ave], [], 'all') - 0.02, 'GC', ...
+    'HorizontalAlignment', 'center', ...
+    'VerticalAlignment', 'top', ...
+    'FontSize', 10);
+    legend(["R1","R4"])
+    saveas(gcf, fullfile(save_dir, 'Ave_Inference_Heatmap.epsc'))
+    saveas(gcf, fullfile(save_dir, 'Ave_Inference_Heatmap.fig'))
+
+
     %% PC prediction R2 values
+    figure
     PC = PC(1, 1:10);
     bar(PC)
     title("Neural PC Encoding R^2")
     xlabel("Neural PC")
     ylabel("R^2")
     ylim([0,1])
-    saveas(gcf, fullfile(save_dir, 'PC_Encoding_R2.png'));
+    saveas(gcf, fullfile(save_dir, 'PC_Encoding_R2.epsc'));
+    
 
     %% NEW FIGURE %%
 
@@ -211,75 +244,67 @@ for i = 1:length(session_dirs)
     xlabel('Time (s)');
     ylabel('Trial #');
     title('Engaged (Red) vs Disengaged (Blue) Licks');
-    xticks([0 100 200]);
-    % xticklabels({'0', '1', '2'});
+    xticks([0 60 110 160 210]);
+    xticklabels({'-.10', '0.5', '1.0', '1.5', '2.0'});
     % set(gca, 'TickLength', [0 0]);
     % box off;
-    % ylim([0 nTrials + 1]);
+    ylim([0 nTrials + 1]);
+    xlim([0 210])
+    xline(11, '--k', 'LineWidth', 1);  % Add vertical line for GC
+    text(11, -5, 'GC', ...
+        'HorizontalAlignment', 'center', ...
+        'VerticalAlignment', 'bottom', ...
+        'FontSize', 12, ...
+        'Color', 'k');
 
-    saveas(gcf, fullfile(save_dir, 'Labeled_Licks.png'));  % Save current figure as PNG
+    saveas(gcf, fullfile(save_dir, 'Labeled_Licks.epsc'));  % Save current figure as epsc
     saveas(gcf, fullfile(save_dir, 'Labeled_Licks.fig'));  % Save as MATLAB .fig file
 
     
-    %% Violin plot of Lick Bout Durations
-    % Convert durations to milliseconds
-    engaged_ms = engaged_durations' * 10;
-    disengaged_ms = disengaged_durations' * 10;
-    
-    % Combine into cell array
-    all_data = {engaged_ms, disengaged_ms};
-    
-    % Plot violin plot
-    figure;
-    violin(all_data, {'Engaged', 'Disengaged'}, 'ShowData', true, 'ShowMean', false);
-    
-    ylabel('Lick Duration (ms)');
-    title('Engaged vs Disengaged Lick Bout Durations');
-    set(gca, 'FontSize', 12);
-    
-    % Save figure
-    saveas(gcf, fullfile(save_dir, 'Duration_Comparison_Violin.png'));
-
-    % Perform t-test
-    [~, p, ~, stats] = ttest2(engaged_ms, disengaged_ms);
-    
-    % Create stats table
-    stats_table = table(stats.tstat, stats.df, p, ...
-        'VariableNames', {'t_stat', 'df', 'p_value'});
-    
-    % Save to CSV
-    writetable(stats_table, fullfile(save_dir, 'Duration_Comparison_ttest.csv'));
-    
-    disp('t-test results saved to CSV:');
-    disp(stats_table);
-
-
+    % %% Violin plot of Lick Bout Durations
+    % % Convert durations to milliseconds
+    % engaged_ms = engaged_durations' * 10;
+    % disengaged_ms = disengaged_durations' * 10;
     % 
-    % %% Example plots of licks
-    % % How many examples to show
-    % nExamples = 10;
+    % % Combine into cell array
+    % all_data = {engaged_ms, disengaged_ms};
     % 
-    % % Random indices (protect against too few licks)
-    % nEngaged = min(nExamples, length(engaged_licks));
-    % nDisengaged = min(nExamples, length(disengaged_licks));
-    % 
-    % % Plot engaged licks
+    % % Plot violin plot
     % figure;
-    % for i = 1:nEngaged
-    %     subplot(2, nExamples, i);
-    %     plot(engaged_licks{i}, 'r', 'LineWidth', 1.5);
-    %     title(['Engaged ' num2str(i)]);
-    %     xlabel('Time'); ylabel('Lick amplitude');
-    % end
+    % violin(all_data, {'Engaged', 'Disengaged'}, 'ShowData', true, 'ShowMean', false);
     % 
-    % % Plot disengaged licks
-    % for i = 1:nDisengaged
-    %     subplot(2, nExamples, nExamples + i);
-    %     plot(disengaged_licks{i}, 'b', 'LineWidth', 1.5);
-    %     title(['Disengaged ' num2str(i)]);
-    %     xlabel('Time'); ylabel('Lick amplitude');
-    % end
-    % sgtitle('Example Engaged (Red) vs Disengaged (Blue) Licks');
+    % ylabel('Lick Duration (ms)');
+    % title('Engaged vs Disengaged Lick Bout Durations');
+    % set(gca, 'FontSize', 12);
+    % 
+    % % Save figure
+    % saveas(gcf, fullfile(save_dir, 'Duration_Comparison_Violin.epsc'));
+    % 
+    % % Perform t-test
+    % [~, p, ~, stats] = ttest2(engaged_ms, disengaged_ms);
+    % 
+    % % Create stats table
+    % stats_table = table(stats.tstat, stats.df, p, ...
+    %     'VariableNames', {'t_stat', 'df', 'p_value'});
+    % 
+    % % Save to CSV
+    % writetable(stats_table, fullfile(save_dir, 'Duration_Comparison_ttest.csv'));
+    % 
+    % disp('t-test results saved to CSV:');
+    % disp(stats_table);
+
+    % %% Histogram of lick lengths
+    % figure;
+    % all_ms = [engaged_ms; disengaged_ms];
+    % histogram(all_ms);
+    % title("Lick Duration Distribution")
+    % xlabel("Lick Duration (ms)")
+    % ylabel("Count)")
+    % % Save figure
+    % saveas(gcf, fullfile(save_dir, 'Histogram_Duration.epsc'));
+    % 
+    % 
+    close all;
 
 
 end
