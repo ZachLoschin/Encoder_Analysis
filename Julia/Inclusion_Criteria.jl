@@ -61,6 +61,28 @@ for session_path in session_folders
             Probe11_R4_Cut, Probe1_R4_Cut, PCA_P11_R4_Cut, PCA_P1_R4_Cut, KP_R4_Cut, FCs_R4, SCs_R4, LRCs_R4, Tongue_mat_R4, Jaw_R4_Cut = load_data_encoder_cut_noSVD(session_path, "R4")
         end
 
+
+        if occursin("TD3d", session)
+            println("TD3d shift fixed")
+            """
+            Cut the kinematics up (in the case of the TD3d shift)
+            """
+
+            KP_R1 = [el[51:end, :] for el in KP_R1];
+            KP_R4 = [el[51:end, :] for el in KP_R4];
+            KP_R1_Cut = [el[51:end, :] for el in KP_R1_Cut];
+            KP_R4_Cut = [el[51:end, :] for el in KP_R4_Cut];
+
+
+            """
+            Cut from the end of neural data to conserve sizes
+            """
+            PCA_P1_R1 = [el[1:end-50, :] for el in PCA_P1_R1];
+            PCA_P1_R4 = [el[1:end-50, :] for el in PCA_P1_R4];
+            PCA_P1_R1_Cut = [el[1:end-50, :] for el in PCA_P1_R1_Cut];
+            PCA_P1_R4_Cut = [el[1:end-50, :] for el in PCA_P1_R4_Cut];
+        end
+
         # Assuming KP_R1 is a vector of matrices
         for i in 1:length(KP_R1)
             # Replace NaN values in each matrix with 0
@@ -154,8 +176,8 @@ for session_path in session_folders
         println(r2score)
         println(r2score2)
 
-        if !isdir(joinpath("Results_Window\\" *session_save))
-            mkpath(joinpath("Results_Window\\" *session_save))
+        if !isdir(joinpath("Results_Window_R14\\" *session_save))
+            mkpath(joinpath("Results_Window_R14\\" *session_save))
         end
 
         push!(all_r2scores, (Session = session, R2_PC1 = r2score, R2_PC2 = r2score2))
@@ -179,5 +201,5 @@ for session_path in session_folders
     # end
 end
 
-CSV.write("Results_Window\\All_R2_Means.csv", all_r2scores)
+CSV.write("Results_Window_R14\\All_R2_Means.csv", all_r2scores)
 

@@ -24,7 +24,7 @@ params.nLicks              = 20; % number of post go cue licks to calculate medi
 
 
 % explore lowering this to aroiund 0.5
-params.lowFR               = 1; % remove clusters with firing rates across all trials less than this val
+params.lowFR               = 1.0; % remove clusters with firing rates across all trials less than this val
 
 % params.condition(1) = {'hit==1'};
 params.condition(1) = {'hit==1 | hit==0' };    % left to right         % right hits, no stim, aw off
@@ -147,8 +147,11 @@ end
 R1_Trials = params.trialid{8};
 R4_Trials = params.trialid{9};
 
-R1_Trials = R1_Trials(R1_Trials < NTRIALS);
-R4_Trials = R4_Trials(R4_Trials < NTRIALS);
+R1_Trials = R1_Trials(R1_Trials <= NTRIALS);
+R4_Trials = R4_Trials(R4_Trials <= NTRIALS);
+
+R1_Trial_Track = R1_Trials;
+R4_Trial_Track = R4_Trials;
 
 % Filter Tongue Length
 R1_Tongue = all_length((pre_gc_points-100+1):end, R1_Trials);  % -1s through 4s (500 points)
@@ -174,6 +177,9 @@ FCs_R4_clean(trials2removeR4) = [];
 SCs_R4_clean(trials2removeR4) = [];
 LRCs_R4_clean(trials2removeR4) = [];
 
+% Update the trial tracking lists
+R1_Trial_Track(trials2removeR1) = [];
+R4_Trial_Track(trials2removeR4) = [];
 
 %% Get the keypoints by trial
 R1_Keypoints = pos(101:end, :, R1_Trials);
@@ -398,6 +404,10 @@ outputFolder = fullfile( ...
 if ~exist(outputFolder, 'dir')
     mkdir(outputFolder);
 end
+
+% Save trial indices for each condition
+csvwrite(fullfile(outputFolder, "R1_Trial_Track.csv"), R1_Trial_Track);
+csvwrite(fullfile(outputFolder, "R4_Trial_Track.csv"), R4_Trial_Track);
 
 % Save key point features
 csvwrite(fullfile(outputFolder, "Keypoint_Feats_R1_Uncut.csv"), R1_Keypoints_Uncut);

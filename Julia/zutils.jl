@@ -83,6 +83,7 @@ function SSD.update_transition_matrix!(
     model::SSD.AbstractHMM, FB_storage_vec::Vector{SSD.ForwardBackward{Float64}}
 )
     # println("Custom transition matrix large sticky")
+    println("No A prior rn")
     A_temp = zeros(model.K, model.K)
 
     for j in 1:model.K
@@ -92,7 +93,7 @@ function SSD.update_transition_matrix!(
     end
 
     for k in 1:model.K
-        A_temp[k, k] += 100
+        A_temp[k, k] += 0
     end
 
     # renorm

@@ -11,7 +11,7 @@ clear;
 clc;
 close all
 %% Import the state inference and tongue data
-base_dir = 'C:\Research\Encoder_Modeling\Encoder_Analysis\Results_Window_R1_100ms';
+base_dir = 'C:\Research\Encoder_Modeling\Encoder_Analysis\Results_Window_R1_LowFR_Cutoff';
 subfolder = '';
 
 % Get list of all subfolders in base_dir
