@@ -64,7 +64,7 @@ params.fa = false;         % if true, reduces neural dimensions to 10 with facto
 params.bctype = 'reflect'; % options are : reflect  zeropad  none
 
 %% SPECIFY DATA TO LOAD
-datapth = 'C:\Research\Encoder_Modeling\Encoder_Analysis\Data\processed sessions\r14';
+datapth = 'C:\Research\Encoder_Modeling\Encoder_Analysis\Data\processed sessions\r1';
 meta = [];
 
 meta = loadTD(meta,datapth);
@@ -142,6 +142,11 @@ for i = 1:obj.bp.Ntrials
     all_contacts{i} = contacts;
 end
 
+
+%% PSTH
+
+
+
 %% -- Filter Tongue Length and LP Contacts by Trial Type -- %%
 % Get trial IDs
 R1_Trials = params.trialid{8};
@@ -162,8 +167,8 @@ R1_Contacts = all_contacts(R1_Trials);  % these contacts are relative to the gc
 R4_Contacts = all_contacts(R4_Trials);  % these contacts are relative to the gc
 
 %% Find trial FCs, Last Relevant Contacts (LRCs), and Trials2Remove
-[trials2removeR1, FCs_R1_clean, SCs_R1_clean, LRCs_R1_clean] = filter_trials_by_licking(R1_Contacts, min_licks=3);
-[trials2removeR4, FCs_R4_clean, SCs_R4_clean, LRCs_R4_clean] = filter_trials_by_licking(R4_Contacts, min_licks=5);
+[trials2removeR1, FCs_R1_clean, SCs_R1_clean, Fourth_C_R1, LRCs_R1_clean] = filter_trials_by_licking(R1_Contacts, min_licks=3);
+[trials2removeR4, FCs_R4_clean, SCs_R4_clean, Fourth_C_R4, LRCs_R4_clean] = filter_trials_by_licking(R4_Contacts, min_licks=5);
 
 % This trials2remove are indices into R1 and R4_Contacts, not trial numbers
 
@@ -172,10 +177,12 @@ R4_Contacts = all_contacts(R4_Trials);  % these contacts are relative to the gc
 FCs_R1_clean(trials2removeR1) = [];
 SCs_R1_clean(trials2removeR1) = [];
 LRCs_R1_clean(trials2removeR1) = [];
+Fourth_C_R1_clean(trials2removeR1) = [];
 
 FCs_R4_clean(trials2removeR4) = [];
 SCs_R4_clean(trials2removeR4) = [];
 LRCs_R4_clean(trials2removeR4) = [];
+Fourth_C_R4_clean(trials2removeR4) = [];
 
 % Update the trial tracking lists
 R1_Trial_Track(trials2removeR1) = [];
@@ -330,6 +337,9 @@ FCs_Adj_R4 = ceil(FCs_R4_clean*SR + SR);
 SCs_Adj_R1 = ceil(SCs_R1_clean*SR + SR);
 SCs_Adj_R4 = ceil(SCs_R4_clean*SR + SR);
 
+Fourth_C_Adj_R1 = ceil(Fourth_C_R1_clean*SR + SR);
+Fourth_C_Adj_R4 = ceil(Fourth_C_R4_clean*SR + SR);
+
 LRCs_Adj_R1 = ceil(LRCs_R1_clean*SR + SR);
 LRCs_Adj_R4 = ceil(LRCs_R4_clean*SR + SR);
 
@@ -456,6 +466,9 @@ csvwrite(fullfile(outputFolder, "FCs_R4.csv"), FCs_Adj_R4);
 
 csvwrite(fullfile(outputFolder, "SCs_R1.csv"), SCs_Adj_R1);
 csvwrite(fullfile(outputFolder, "SCs_R4.csv"), SCs_Adj_R4);
+
+csvwrite(fullfile(outputFolder, "Fourth_C_R1.csv"), Fourth_C_Adj_R1);
+csvwrite(fullfile(outputFolder, "Fourth_C_R4.csv"), Fourth_C_Adj_R4);
 
 csvwrite(fullfile(outputFolder, "LRCs_R1.csv"), LRCs_Adj_R1);
 csvwrite(fullfile(outputFolder, "LRCs_R4.csv"), LRCs_Adj_R4);

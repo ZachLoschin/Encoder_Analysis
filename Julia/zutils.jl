@@ -136,13 +136,19 @@ function weighted_ridge_regression(X::Matrix{Float64}, Y::Matrix{Float64}, λ::F
     reg = zeros(D + 1, D + 1)
     reg[2:end, 2:end] .= λ
 
-    A = X_bias' * Xw + reg
+    # A = X_bias' * Xw + reg
+
+    # REG REMOVED
+    A = X_bias' * Xw #+ reg
 
     b = X_bias' * Yw
 
     cond_A = cond(A)
     # Update the WLS fit
-    β = (X_bias'Xw + reg) \ (X_bias'Yw)
+    # β = (X_bias'Xw + reg) \ (X_bias'Yw)
+
+    # REG REMOVED
+    β = (X_bias'Xw) \ (X_bias'Yw)
 
     # Update the WLS variance
     residuals = Y - X_bias * β

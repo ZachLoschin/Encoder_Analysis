@@ -23,7 +23,7 @@ Random.seed!(1234);
 
 const SSD = StateSpaceDynamics
 
-base_path = "C:\\Research\\Encoder_Modeling\\Encoder_Analysis\\Processed_Encoder\\R1_LowFR_Cutoff\\"
+base_path = "C:\\Research\\Encoder_Modeling\\Encoder_Analysis\\Processed_Encoder\\R1\\"
 session_folders = filter(isdir, glob("*", base_path))
 
 for session_path in session_folders
@@ -81,7 +81,7 @@ for session_path in session_folders
         end
 
         # Make sure path exists
-        save_dir = joinpath("Results_Window_R1_LowFR_Cutoff\\" * session_save)
+        save_dir = joinpath("Results_Window_R1\\" * session_save)
         if !isdir(save_dir)
             mkpath(save_dir)
         end

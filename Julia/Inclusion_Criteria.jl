@@ -23,7 +23,7 @@ Random.seed!(1234);
 
 const SSD = StateSpaceDynamics
 
-base_path = "C:\\Research\\Encoder_Modeling\\Encoder_Analysis\\Processed_Encoder\\R14\\"
+base_path = "C:\\Research\\Encoder_Modeling\\Encoder_Analysis\\Processed_Encoder\\R14_Not_Filtered\\"
 session_folders = filter(isdir, glob("*", base_path))
 
 all_r2scores = DataFrame(Session = String[], R2_PC1 = Float64[], R2_PC2 = Float64[])

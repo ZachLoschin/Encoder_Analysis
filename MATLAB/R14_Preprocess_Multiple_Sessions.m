@@ -48,7 +48,7 @@ for i = 1:height(session_table)
     
     
     % explore lowering this to aroiund 0.5
-    params.lowFR               = 1.0; % remove clusters with firing rates across all trials less than this val
+    params.lowFR               = 0.1; % remove clusters with firing rates across all trials less than this val
     
     % params.condition(1) = {'hit==1'};
     params.condition(1) = {'hit==1 | hit==0' };    % left to right         % right hits, no stim, aw off
@@ -182,9 +182,8 @@ for i = 1:height(session_table)
     R4_Contacts = all_contacts(R4_Trials);  % these contacts are relative to the gc
     
     %% Find trial FCs, Last Relevant Contacts (LRCs), and Trials2Remove
-    [trials2removeR1, FCs_R1_clean, SCs_R1_clean, LRCs_R1_clean] = filter_trials_by_licking(R1_Contacts, min_licks=3);
-    [trials2removeR4, FCs_R4_clean, SCs_R4_clean, LRCs_R4_clean] = filter_trials_by_licking(R4_Contacts, min_licks=5);
-    
+    [trials2removeR1, FCs_R1_clean, SCs_R1_clean, Fourth_C_R1_clean, LRCs_R1_clean] = filter_trials_by_licking(R1_Contacts, min_licks=3);
+    [trials2removeR4, FCs_R4_clean, SCs_R4_clean, Fourth_C_R4_clean, LRCs_R4_clean] = filter_trials_by_licking(R4_Contacts, min_licks=5);
     % This trials2remove are indices into R1 and R4_Contacts, not trial numbers
     
     %% Filter the trials by valid from SVD analysis and removal from contacts
@@ -192,10 +191,12 @@ for i = 1:height(session_table)
     FCs_R1_clean(trials2removeR1) = [];
     SCs_R1_clean(trials2removeR1) = [];
     LRCs_R1_clean(trials2removeR1) = [];
+    Fourth_C_R1_clean(trials2removeR1) = [];
     
     FCs_R4_clean(trials2removeR4) = [];
     SCs_R4_clean(trials2removeR4) = [];
     LRCs_R4_clean(trials2removeR4) = [];
+    Fourth_C_R4_clean(trials2removeR4) = [];
     
     % Update the trial tracking lists
     R1_Trial_Track(trials2removeR1) = [];
@@ -303,18 +304,20 @@ for i = 1:height(session_table)
     
     % PCA on probe1
     num_PCs = 10;
+
     [coeff1, score1, latent1, tsquared1, explained1, mu1] = pca(P1_PCA);
     score1 = score1(:, 1:num_PCs);
     score1_reshaped = reshape(score1, num_timepoints1, num_trials1, num_PCs);
-    
+
     % PCA on probe2
     [coeff2, score2, latent2, tsquared2, explained2, mu2] = pca(P2_PCA);
     score2 = score2(:, 1:num_PCs);
     score2_reshaped = reshape(score2, num_timepoints2, num_trials2, num_PCs);
     
+    % -- CHECK THESE ARE CORRECT -- %
     % Separate PCs by trial type and filter by valid trials
-    Probe1_PCs_R1 = score1_reshaped(:, R1_Trials, :);
-    Probe1_PCs_R4 = score1_reshaped(:, R4_Trials, :);
+    Probe1_PCs_R1 = score2_reshaped(:, R1_Trials, :);
+    Probe1_PCs_R4 = score2_reshaped(:, R4_Trials, :);
     Probe2_PCs_R1 = score2_reshaped(:, R1_Trials, :);
     Probe2_PCs_R4 = score2_reshaped(:, R4_Trials, :);
     
@@ -350,6 +353,9 @@ for i = 1:height(session_table)
     SCs_Adj_R1 = ceil(SCs_R1_clean*SR + SR);
     SCs_Adj_R4 = ceil(SCs_R4_clean*SR + SR);
     
+    Fourth_C_Adj_R1 = ceil(Fourth_C_R1_clean*SR + SR);
+    Fourth_C_Adj_R4 = ceil(Fourth_C_R4_clean*SR + SR);
+
     LRCs_Adj_R1 = ceil(LRCs_R1_clean*SR + SR);
     LRCs_Adj_R4 = ceil(LRCs_R4_clean*SR + SR);
     
@@ -420,7 +426,7 @@ for i = 1:height(session_table)
     
     % Build the full path
     outputFolder = fullfile( ...
-        'C:\Research\Encoder_Modeling\Encoder_Analysis\Processed_Encoder\R14_Gen', ...
+        'C:\Research\Encoder_Modeling\Encoder_Analysis\Processed_Encoder\R14_529_4thlick', ...
         [sessionName '_' sessionDate]);
     
     % Create the folder if it doesn’t exist
@@ -480,6 +486,9 @@ for i = 1:height(session_table)
     csvwrite(fullfile(outputFolder, "SCs_R1.csv"), SCs_Adj_R1);
     csvwrite(fullfile(outputFolder, "SCs_R4.csv"), SCs_Adj_R4);
     
+    csvwrite(fullfile(outputFolder, "Fourth_C_R1.csv"), Fourth_C_Adj_R1);
+    csvwrite(fullfile(outputFolder, "Fourth_C_R4.csv"), Fourth_C_Adj_R4);
+
     csvwrite(fullfile(outputFolder, "LRCs_R1.csv"), LRCs_Adj_R1);
     csvwrite(fullfile(outputFolder, "LRCs_R4.csv"), LRCs_Adj_R4);
     

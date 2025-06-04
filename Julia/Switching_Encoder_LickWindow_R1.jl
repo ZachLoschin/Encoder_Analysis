@@ -23,7 +23,7 @@ Random.seed!(1234);
 
 const SSD = StateSpaceDynamics
 
-base_path = "C:\\Research\\Encoder_Modeling\\Encoder_Analysis\\Processed_Encoder\\R1_LowFR_Cutoff\\"
+base_path = "C:\\Research\\Encoder_Modeling\\Encoder_Analysis\\Processed_Encoder\\R1\\"
 session_folders = filter(isdir, glob("*", base_path))
 
 for session_path in session_folders
@@ -59,6 +59,14 @@ for session_path in session_folders
             Probe11_R4_Cut, Probe1_R4_Cut, PCA_P11_R4_Cut, PCA_P1_R4_Cut, KP_R4_Cut, FCs_R4, SCs_R4, LRCs_R4, Tongue_mat_R4, Jaw_R4_Cut = load_data_encoder_cut_noSVD(session_path, "R4")
         end
 
+        # 1:17, 20:24
+        # Drop certain features if necessary
+
+        KP_R4 = [dropdims(el[:, vcat(1:17, 20:24), :]; dims=3) for el in KP_R4]
+        KP_R1 = [dropdims(el[:, vcat(1:17, 20:24), :]; dims=3) for el in KP_R1]
+        KP_R4_Cut = [dropdims(el[:, vcat(1:17, 20:24), :]; dims=3) for el in KP_R4_Cut]
+        KP_R1_Cut = [dropdims(el[:, vcat(1:17, 20:24), :]; dims=3) for el in KP_R1_Cut]
+
         # Assuming KP_R1 is a vector of matrices
         for i in 1:length(KP_R1)
             # Replace NaN values in each matrix with 0
@@ -88,7 +96,7 @@ for session_path in session_folders
 
         println("Prefitting Encoders")
         lags=4
-        leads = 4
+        leads = 0
         start_time = 90
         dif = 100-lags;
 
@@ -101,9 +109,6 @@ for session_path in session_folders
         FCs = FCs_R1 .- start_time
         LRCs = LRCs_R1 .- start_time
 
-
-
-
         X_eng = [X_R1_kernel[i][(FCs_R1[i]-3):(FCs_R1[i]), :] for i in eachindex(X_R1_kernel)]
         Y_eng = [Y_R1_trimmed[i][(FCs_R1[i]-3):(FCs_R1[i]), :] for i in eachindex(Y_R1_trimmed)]
 
@@ -112,6 +117,22 @@ for session_path in session_folders
         Y_eng = vcat(Y_eng...)
 
         β_eng, Σ_eng = weighted_ridge_regression(X_eng, Y_eng, 0.01)
+        
+
+
+        println("Making dise")
+        # X_diseng = [X_R1_kernel[i][LRCs_R1[i]-7:(LRCs_R1[i]), :] for i in eachindex(X_R1_kernel)]
+        # Y_diseng = [Y_R1_trimmed[i][LRCs_R1[i]-7:(LRCs_R1[i]), :]  for i in eachindex(Y_R1_trimmed)]
+
+        X_diseng = [X_R1_kernel[i][end-7:(end), :] for i in eachindex(X_R1_kernel)]
+        Y_diseng = [Y_R1_trimmed[i][end-7:(end), :]  for i in eachindex(Y_R1_trimmed)]
+
+        println("loop fin")
+        X_diseng = vcat(X_diseng...)
+        Y_diseng = vcat(Y_diseng...)
+
+        println("fitting")
+        β_diseng, Σ_diseng = weighted_ridge_regression(X_diseng, Y_diseng, 0.01)
 
 
 
@@ -139,6 +160,9 @@ for session_path in session_folders
 
         model.B[1].β = β_eng
         model.B[1].Σ = Σ_eng
+
+        model.B[2].β = β_diseng
+        model.B[2].Σ = Σ_diseng
 
         model.A = [0.9999 0.0001; 0.0001 0.9999]
         model.πₖ = [0.0001; 0.9999]
@@ -242,11 +266,11 @@ for session_path in session_folders
         VITERBI STATES SAVED
         """
 
-        if !isdir(joinpath("Results_Window\\" *session_save))
-            mkpath(joinpath("Results_Window\\" *session_save))
+        if !isdir(joinpath("Results_Window_R1_DisInit\\" *session_save))
+            mkpath(joinpath("Results_Window_R1_DisInit\\" *session_save))
         end
 
-        println("SAVE PATH", (joinpath("Results_Window\\" *session_save, "R14_PC_R2_Reg.csv")))
+        println("SAVE PATH", (joinpath("Results_Window_R1_DisInit\\" *session_save, "R14_PC_R2_Reg.csv")))
 
         R1_States_Vit_df = DataFrame(R1_Vit, :auto)
         R1_States_df = DataFrame(R1_States, :auto)
@@ -256,10 +280,10 @@ for session_path in session_folders
         mean_r2_df = DataFrame(mean_r2_per_pc', :auto)  # make it a 1×12 DataFrame
 
         # Save
-        CSV.write(joinpath("Results_Window\\" *session_save, "R1_PC_R2_Reg.csv"), mean_r2_df; header=false)
-        CSV.write(joinpath("Results_Window\\" *session_save, "R1_Tongue_Reg.csv"), R1_Tongue_df; header=false)
-        CSV.write(joinpath("Results_Window\\" *session_save, "R1_States_Reg.csv"), R1_States_df; header=false)
-        CSV.write(joinpath("Results_Window\\" *session_save, "R1_States_Vit_Reg.csv"), R1_States_Vit_df; header=false)
+        CSV.write(joinpath("Results_Window_R1_DisInit\\" *session_save, "R1_PC_R2_Reg.csv"), mean_r2_df; header=false)
+        CSV.write(joinpath("Results_Window_R1_DisInit\\" *session_save, "R1_Tongue_Reg.csv"), R1_Tongue_df; header=false)
+        CSV.write(joinpath("Results_Window_R1_DisInit\\" *session_save, "R1_States_Reg.csv"), R1_States_df; header=false)
+        CSV.write(joinpath("Results_Window_R1_DisInit\\" *session_save, "R1_States_Vit_Reg.csv"), R1_States_Vit_df; header=false)
 
         println("SESSION DATA SAVED")
 

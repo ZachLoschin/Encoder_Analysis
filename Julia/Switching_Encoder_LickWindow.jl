@@ -23,7 +23,7 @@ Random.seed!(1234);
 
 const SSD = StateSpaceDynamics
 
-base_path = "C:\\Research\\Encoder_Modeling\\Encoder_Analysis\\Processed_Encoder\\R16\\"
+base_path = "C:\\Research\\Encoder_Modeling\\Encoder_Analysis\\Processed_Encoder\\R14_ToInclude\\"
 session_folders = filter(isdir, glob("*", base_path))
 
 for session_path in session_folders
@@ -43,21 +43,56 @@ for session_path in session_folders
         end
         println("Processing session: $session with Probe $prb")
         session_path = session_path * "\\"
+        println(session_path)
         if prb == 1
             println("Probe 1 Processing -> Check this!")
             Probe1_R1, Probe2_R1, PCA_P1_R1, PCA_P2_R1, KP_R1, Jaw_R1 = load_data_encoder_noSVD(session_path, "R1")
-            Probe1_R4, Probe2_R4, PCA_P1_R4, PCA_P2_R4, KP_R4, Jaw_R4 = load_data_encoder_noSVD(session_path, "R16")
+            Probe1_R4, Probe2_R4, PCA_P1_R4, PCA_P2_R4, KP_R4, Jaw_R4 = load_data_encoder_noSVD(session_path, "R4")
 
             Probe1_R1_Cut, Probe2_R1_Cut, PCA_P1_R1_Cut, PCA_P2_R1_Cut, KP_R1_Cut, FCs_R1, SCs_R1, LRCs_R1, Tongue_mat_R1, Jaw_R1_Cut = load_data_encoder_cut_noSVD(session_path, "R1")
-            Probe1_R4_Cut, Probe2_R4_Cut, PCA_P1_R4_Cut, PCA_P2_R4_Cut, KP_R4_Cut, FCs_R4, SCs_R4, LRCs_R4, Tongue_mat_R4, Jaw_R4_Cut = load_data_encoder_cut_noSVD(session_path, "R16")
+            Probe1_R4_Cut, Probe2_R4_Cut, PCA_P1_R4_Cut, PCA_P2_R4_Cut, KP_R4_Cut, FCs_R4, SCs_R4, LRCs_R4, Tongue_mat_R4, Jaw_R4_Cut = load_data_encoder_cut_noSVD(session_path, "R4")
         else
             println("Probe 2 Processing -> Check this!")
             Probe11_R1, Probe1_R1, PCA_P11_R1, PCA_P1_R1, KP_R1, Jaw_R1 = load_data_encoder_noSVD(session_path, "R1")
-            Probe11_R4, Probe1_R4, PCA_P11_R4, PCA_P1_R4, KP_R4, Jaw_R4 = load_data_encoder_noSVD(session_path, "R16")
+            Probe11_R4, Probe1_R4, PCA_P11_R4, PCA_P1_R4, KP_R4, Jaw_R4 = load_data_encoder_noSVD(session_path, "R4")
 
             Probe11_R1_Cut, Probe1_R1_Cut, PCA_P11_R1_Cut, PCA_P1_R1_Cut, KP_R1_Cut, FCs_R1, SCs_R1, LRCs_R1, Tongue_mat_R1, Jaw_R1_Cut = load_data_encoder_cut_noSVD(session_path, "R1")
-            Probe11_R4_Cut, Probe1_R4_Cut, PCA_P11_R4_Cut, PCA_P1_R4_Cut, KP_R4_Cut, FCs_R4, SCs_R4, LRCs_R4, Tongue_mat_R4, Jaw_R4_Cut = load_data_encoder_cut_noSVD(session_path, "R16")
+            Probe11_R4_Cut, Probe1_R4_Cut, PCA_P11_R4_Cut, PCA_P1_R4_Cut, KP_R4_Cut, FCs_R4, SCs_R4, LRCs_R4, Tongue_mat_R4, Jaw_R4_Cut = load_data_encoder_cut_noSVD(session_path, "R4")
         end
+
+        println("LOADED DATA")
+
+        if occursin("TD3d", session)
+            println("TD3d shift fixed")
+            """
+            Cut the kinematics up (in the case of the TD3d shift)
+            """
+
+            KP_R1 = [el[51:end, :] for el in KP_R1];
+            KP_R4 = [el[51:end, :] for el in KP_R4];
+            KP_R1_Cut = [el[51:end, :] for el in KP_R1_Cut];
+            KP_R4_Cut = [el[51:end, :] for el in KP_R4_Cut];
+
+
+            """
+            Cut from the end of neural data to conserve sizes
+            """
+            PCA_P1_R1 = [el[1:end-50, :] for el in PCA_P1_R1];
+            PCA_P1_R4 = [el[1:end-50, :] for el in PCA_P1_R4];
+            PCA_P1_R1_Cut = [el[1:end-50, :] for el in PCA_P1_R1_Cut];
+            PCA_P1_R4_Cut = [el[1:end-50, :] for el in PCA_P1_R4_Cut];
+
+            Tongue_mat_R1 = Tongue_mat_R1[50:end, :]
+            Tongue_mat_R4 = Tongue_mat_R4[50:end, :]
+        end
+
+        # 1:17, 20:24
+        # Drop certain features if necessary
+
+        # KP_R4 = [dropdims(el[:, vcat(1:17, 20:24), :]; dims=3) for el in KP_R4]
+        # KP_R1 = [dropdims(el[:, vcat(1:17, 20:24), :]; dims=3) for el in KP_R1]
+        # KP_R4_Cut = [dropdims(el[:, vcat(1:17, 20:24), :]; dims=3) for el in KP_R4_Cut]
+        # KP_R1_Cut = [dropdims(el[:, vcat(1:17, 20:24), :]; dims=3) for el in KP_R1_Cut]
 
         # Assuming KP_R1 is a vector of matrices
         for i in 1:length(KP_R1)
@@ -96,57 +131,57 @@ for session_path in session_folders
         # X_R1 = [X[100-lags:end,:] for X in Jaw_R1]
         # X_R4 = [X[100-lags:end,:] for X in Jaw_R4]
 
-        # X_R1 = [X[start_time-lags+1:end,:] for X in KP_R1]
-        # X_R4 = [X[start_time-lags+1:end,:] for X in KP_R4]
+        X_R1 = [X[start_time-lags+1:end,:] for X in KP_R1]
+        X_R4 = [X[start_time-lags+1:end,:] for X in KP_R4]
 
 
-        # Y_R1 = [Y[start_time-lags+1:end, 1:10] for Y in PCA_P1_R1]
-        # Y_R4 = [Y[start_time-lags+1:end, 1:10] for Y in PCA_P1_R4]
+        Y_R1 = [Y[start_time-lags+1:end, 1:10] for Y in PCA_P1_R1]
+        Y_R4 = [Y[start_time-lags+1:end, 1:10] for Y in PCA_P1_R4]
 
-        # X_R1_kernel = kernelize_window_features(X_R1)
-        # X_R4_kernel = kernelize_window_features(X_R4)
+        X_R1_kernel = kernelize_window_features(X_R1)
+        X_R4_kernel = kernelize_window_features(X_R4)
 
-        # Y_R1_trimmed = kernelize_window_features(Y_R1)
-        # Y_R4_trimmed = kernelize_window_features(Y_R4)
-
-
-        # # Y_R1_trimmed = trim_Y_train_past(Y_R1)
-        # # Y_R4_trimmed = trim_Y_train_past(Y_R4)
-
-        # FCs_R4 = FCs_R4 .- start_time
-        # FCs_R1 = FCs_R1 .- start_time
-
-        # LRCs_R4 = LRCs_R4 .- start_time
-        # LRCs_R1 = LRCs_R1 .- start_time
-
-        # FCs = cat(FCs_R1, FCs_R4, dims=2)
-        # LRCs= cat(LRCs_R1, LRCs_R4, dims=1)
-
-        # X_R1 = [X_R1_kernel[i][(FCs_R1[i]-3):(FCs_R1[i]), :] for i in eachindex(X_R1_kernel)]
-        # X_R4 = [X_R4_kernel[i][(FCs_R4[i]-3):(FCs_R4[i]+10), :] for i in eachindex(X_R4_kernel)]
-
-        # Y_R1 = [Y_R1_trimmed[i][(FCs_R1[i]-3):(FCs_R1[i]), :] for i in eachindex(Y_R1_trimmed)]
-        # Y_R4 = [Y_R4_trimmed[i][(FCs_R4[i]-3):(FCs_R4[i]+10), :] for i in eachindex(Y_R4_trimmed)]
-
-        # X_eng = cat(X_R1, X_R4, dims=1)
-        # Y_eng = cat(Y_R1, Y_R4, dims=1)
+        Y_R1_trimmed = kernelize_window_features(Y_R1)
+        Y_R4_trimmed = kernelize_window_features(Y_R4)
 
 
-        # X_R1 = [X_R1_kernel[i][LRCs_R1[i]-7:(LRCs_R1[i]), :] for i in eachindex(X_R1_kernel)]
-        # X_R4 = [X_R4_kernel[i][LRCs_R4[i]-7:(LRCs_R4[i]), :]  for i in eachindex(X_R4_kernel)]
+        # Y_R1_trimmed = trim_Y_train_past(Y_R1)
+        # Y_R4_trimmed = trim_Y_train_past(Y_R4)
 
-        # Y_R1 = [Y_R1_trimmed[i][LRCs_R1[i]-7:(LRCs_R1[i]), :]  for i in eachindex(Y_R1_trimmed)]
-        # Y_R4 = [Y_R4_trimmed[i][LRCs_R4[i]-7:(LRCs_R4[i]), :]  for i in eachindex(Y_R4_trimmed)]
+        FCs_R4 = FCs_R4 .- start_time
+        FCs_R1 = FCs_R1 .- start_time
+
+        LRCs_R4 = LRCs_R4 .- start_time
+        LRCs_R1 = LRCs_R1 .- start_time
+
+        FCs = cat(FCs_R1, FCs_R4, dims=2)
+        LRCs= cat(LRCs_R1, LRCs_R4, dims=1)
+
+        X_R1 = [X_R1_kernel[i][(FCs_R1[i]-3):(FCs_R1[i]), :] for i in eachindex(X_R1_kernel)]
+        X_R4 = [X_R4_kernel[i][(FCs_R4[i]-3):(FCs_R4[i]+10), :] for i in eachindex(X_R4_kernel)]
+
+        Y_R1 = [Y_R1_trimmed[i][(FCs_R1[i]-3):(FCs_R1[i]), :] for i in eachindex(Y_R1_trimmed)]
+        Y_R4 = [Y_R4_trimmed[i][(FCs_R4[i]-3):(FCs_R4[i]+10), :] for i in eachindex(Y_R4_trimmed)]
+
+        X_eng = cat(X_R1, X_R4, dims=1)
+        Y_eng = cat(Y_R1, Y_R4, dims=1)
 
 
-        # X_diseng = cat(X_R1, X_R4, dims=1)
-        # Y_diseng = cat(Y_R1, Y_R4, dims=1)
+        X_R1 = [X_R1_kernel[i][LRCs_R1[i]-7:(LRCs_R1[i]), :] for i in eachindex(X_R1_kernel)]
+        X_R4 = [X_R4_kernel[i][LRCs_R4[i]-7:(LRCs_R4[i]), :]  for i in eachindex(X_R4_kernel)]
 
-        # # Prefit engaged model
-        # X_eng = vcat(X_eng...)
-        # Y_eng = vcat(Y_eng...)
+        Y_R1 = [Y_R1_trimmed[i][LRCs_R1[i]-7:(LRCs_R1[i]), :]  for i in eachindex(Y_R1_trimmed)]
+        Y_R4 = [Y_R4_trimmed[i][LRCs_R4[i]-7:(LRCs_R4[i]), :]  for i in eachindex(Y_R4_trimmed)]
 
-        # β_eng, Σ_eng = weighted_ridge_regression(X_eng, Y_eng, 0.01)
+
+        X_diseng = cat(X_R1, X_R4, dims=1)
+        Y_diseng = cat(Y_R1, Y_R4, dims=1)
+
+        # Prefit engaged model
+        X_eng = vcat(X_eng...)
+        Y_eng = vcat(Y_eng...)
+
+        β_eng, Σ_eng = weighted_ridge_regression(X_eng, Y_eng, 0.01)
 
         # # seems to be a problem with X
         # X_diseng = vcat(X_diseng...)
@@ -186,15 +221,15 @@ for session_path in session_folders
         # Initialize the Gaussian HMM-GLM
         model = SwitchingGaussianRegression(;K=2, input_dim=size(X_ready[1])[1], output_dim=size(Y_ready[1])[1], include_intercept=true)
 
-        # model.B[1].β = β_eng
-        # model.B[1].Σ = Σ_eng
+        model.B[1].β = β_eng
+        model.B[1].Σ = Σ_eng
 
 
         # model.B[2].β = β_diseng
         # model.B[2].Σ = Σ_eng
 
-        # model.A = [0.9999 0.0001; 0.0001 0.9999]
-        # model.πₖ = [0.0001; 0.9999]
+        model.A = [0.99 0.01; 0.01 0.99]
+        model.πₖ = [0.01; 0.99]
 
         lls = fit_custom!(model, Y_ready, X_ready, max_iters=100)
 
@@ -314,7 +349,6 @@ for session_path in session_folders
         """
         """
 
-
         
         # Assess average PC prediction accuracy
         # Assume:
@@ -363,12 +397,6 @@ for session_path in session_folders
 
         # `r2_scores` now has shape (num_trials × num_PCs)
 
-
-
-
-
-
-   
         # Visualization of wtf is going on
 
         # trial = 1
@@ -443,18 +471,17 @@ for session_path in session_folders
         VITERBI STATES SAVED
         """
 
-        if !isdir(joinpath("Results_Window_R16_NoInit\\" *session_save))
-            mkpath(joinpath("Results_Window_R16_NoInit\\" *session_save))
+        if !isdir(joinpath("Results_Window_R14_NoReg\\" *session_save))
+            mkpath(joinpath("Results_Window_R14_NoReg\\" *session_save))
         end
 
-        println("SAVE PATH", (joinpath("Results_Window_R16_NoInit\\" *session_save, "R14_PC_R2_Reg.csv")))
+        println("**SAVE PATH**", (joinpath("Results_Window_R14_NoReg\\" *session_save, "R14_PC_R2_Reg.csv")))
 
+        println("AMEN BROTHER")
         R4_States_Vit_df = DataFrame(R4_Vit, :auto)
         R1_States_Vit_df = DataFrame(R1_Vit, :auto)
         R4_States_df = DataFrame(R4_States, :auto)
         R1_States_df = DataFrame(R1_States, :auto)
-
-        println("HEREHRHEHR")
 
         # Wrap vector into a DataFrame
         # Convert to DataFrame
@@ -463,14 +490,17 @@ for session_path in session_folders
         println("HERE")
         println(session_save)
 
-        CSV.write(joinpath("Results_Window_R16_NoInit\\" *session_save, "R14_PC_R2_Reg.csv"), mean_r2_df; header=false)
+        CSV.write(joinpath("Results_Window_R14_NoReg\\" *session_save, "R14_PC_R2_Reg.csv"), mean_r2_df; header=false)
         println("EHRHEHEHE")
-        CSV.write(joinpath("Results_Window_R16_NoInit\\" *session_save, "R14_Tongue_Reg.csv"), R4_Tongue_df; header=false)
-        CSV.write(joinpath("Results_Window_R16_NoInit\\" *session_save, "R1_Tongue_Reg.csv"), R1_Tongue_df; header=false)
-        CSV.write(joinpath("Results_Window_R16_NoInit\\" *session_save, "R14_States_Reg.csv"), R4_States_df; header=false)
-        CSV.write(joinpath("Results_Window_R16_NoInit\\" *session_save, "R1_States_Reg.csv"), R1_States_df; header=false)
-        CSV.write(joinpath("Results_Window_R16_NoInit\\" *session_save, "R14_States_Vit_Reg.csv"), R4_States_Vit_df; header=false)
-        CSV.write(joinpath("Results_Window_R16_NoInit\\" *session_save, "R1_States_Vit_Reg.csv"), R1_States_Vit_df; header=false)
+        
+        CSV.write(joinpath("Results_Window_R14_NoReg\\" *session_save, "R14_States_Reg.csv"), R4_States_df; header=false)
+        CSV.write(joinpath("Results_Window_R14_NoReg\\" *session_save, "R1_States_Reg.csv"), R1_States_df; header=false)
+        CSV.write(joinpath("Results_Window_R14_NoReg\\" *session_save, "R14_States_Vit_Reg.csv"), R4_States_Vit_df; header=false)
+        CSV.write(joinpath("Results_Window_R14_NoReg\\" *session_save, "R1_States_Vit_Reg.csv"), R1_States_Vit_df; header=false)
+
+        println("ALMSOT ALL SAVED")
+        CSV.write(joinpath("Results_Window_R14_NoReg\\" *session_save, "R14_Tongue_Reg.csv"), R4_Tongue_df; header=false)
+        CSV.write(joinpath("Results_Window_R14_NoReg\\" *session_save, "R1_Tongue_Reg.csv"), R1_Tongue_df; header=false)
 
         println("SESSION DATA SAVED")
 

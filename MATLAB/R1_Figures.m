@@ -2,7 +2,6 @@
 % Drs. Mike Economo and Brian DePasquale
 % January 2025
 % Preprocessing file for disengagement analysis
-
 % Heatmap creation for imported state labels and tongue kinematics from
 % julia HMM-GLM analysis
 
@@ -11,7 +10,7 @@ clear;
 clc;
 close all
 %% Import the state inference and tongue data
-base_dir = 'C:\Research\Encoder_Modeling\Encoder_Analysis\Results_Window_R1_LowFR_Cutoff';
+base_dir = 'C:\Research\Encoder_Modeling\Encoder_Analysis\Results_Window_R1_DisInit';
 subfolder = '';
 
 % Get list of all subfolders in base_dir
@@ -181,40 +180,40 @@ for i = 1:length(session_dirs)
     saveas(gcf, fullfile(save_dir, 'Labeled_Licks.fig'));  % Save as MATLAB .fig file
 
     
-    %% Violin plot of Lick Bout Durations
-    % Convert durations to milliseconds
-    engaged_ms = engaged_durations' * 10;
-    disengaged_ms = disengaged_durations' * 10;
-    
-    % Combine into cell array
-    all_data = {engaged_ms, disengaged_ms};
-    
-    % Plot violin plot
-    figure;
-    violin(all_data, {'Engaged', 'Disengaged'}, 'ShowData', true, 'ShowMean', false);
-    
-    ylabel('Lick Duration (ms)');
-    title('Engaged vs Disengaged Lick Bout Durations');
-    set(gca, 'FontSize', 12);
-    
-    % Save figure
-    saveas(gcf, fullfile(save_dir, 'Duration_Comparison_Violin.png'));
-
-    % Perform t-test
-    [~, p, ~, stats] = ttest2(engaged_ms, disengaged_ms);
-    
-    % Create stats table
-    stats_table = table(stats.tstat, stats.df, p, ...
-        'VariableNames', {'t_stat', 'df', 'p_value'});
-    
-    % Save to CSV
-    writetable(stats_table, fullfile(save_dir, 'Duration_Comparison_ttest.csv'));
-    
-    disp('t-test results saved to CSV:');
-    disp(stats_table);
-
-
+    % %% Violin plot of Lick Bout Durations
+    % % Convert durations to milliseconds
+    % engaged_ms = engaged_durations' * 10;
+    % disengaged_ms = disengaged_durations' * 10;
     % 
+    % % Combine into cell array
+    % all_data = {engaged_ms, disengaged_ms};
+    % 
+    % % Plot violin plot
+    % figure;
+    % violin(all_data, {'Engaged', 'Disengaged'}, 'ShowData', true, 'ShowMean', false);
+    % 
+    % ylabel('Lick Duration (ms)');
+    % title('Engaged vs Disengaged Lick Bout Durations');
+    % set(gca, 'FontSize', 12);
+    % 
+    % % Save figure
+    % saveas(gcf, fullfile(save_dir, 'Duration_Comparison_Violin.png'));
+    % 
+    % % Perform t-test
+    % [~, p, ~, stats] = ttest2(engaged_ms, disengaged_ms);
+    % 
+    % % Create stats table
+    % stats_table = table(stats.tstat, stats.df, p, ...
+    %     'VariableNames', {'t_stat', 'df', 'p_value'});
+    % 
+    % % Save to CSV
+    % writetable(stats_table, fullfile(save_dir, 'Duration_Comparison_ttest.csv'));
+    % 
+    % disp('t-test results saved to CSV:');
+    % disp(stats_table);
+    % 
+    % 
+    % % 
     % %% Example plots of licks
     % % How many examples to show
     % nExamples = 10;
@@ -240,6 +239,8 @@ for i = 1:length(session_dirs)
     %     xlabel('Time'); ylabel('Lick amplitude');
     % end
     % sgtitle('Example Engaged (Red) vs Disengaged (Blue) Licks');
+
+    close all
 
 
 end
