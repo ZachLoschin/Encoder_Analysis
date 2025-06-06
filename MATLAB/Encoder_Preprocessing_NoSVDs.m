@@ -64,7 +64,7 @@ params.fa = false;         % if true, reduces neural dimensions to 10 with facto
 params.bctype = 'reflect'; % options are : reflect  zeropad  none
 
 %% SPECIFY DATA TO LOAD
-datapth = 'C:\Research\Encoder_Modeling\Encoder_Analysis\Data\processed sessions\r1';
+datapth = 'C:\Research\Encoder_Modeling\Encoder_Analysis\Data\processed sessions\r14';
 meta = [];
 
 meta = loadTD(meta,datapth);
@@ -167,8 +167,8 @@ R1_Contacts = all_contacts(R1_Trials);  % these contacts are relative to the gc
 R4_Contacts = all_contacts(R4_Trials);  % these contacts are relative to the gc
 
 %% Find trial FCs, Last Relevant Contacts (LRCs), and Trials2Remove
-[trials2removeR1, FCs_R1_clean, SCs_R1_clean, Fourth_C_R1, LRCs_R1_clean] = filter_trials_by_licking(R1_Contacts, min_licks=3);
-[trials2removeR4, FCs_R4_clean, SCs_R4_clean, Fourth_C_R4, LRCs_R4_clean] = filter_trials_by_licking(R4_Contacts, min_licks=5);
+[trials2removeR1, FCs_R1_clean, SCs_R1_clean, Fourth_C_R1_clean, LRCs_R1_clean] = filter_trials_by_licking(R1_Contacts, min_licks=3);
+[trials2removeR4, FCs_R4_clean, SCs_R4_clean, Fourth_C_R4_clean, LRCs_R4_clean] = filter_trials_by_licking(R4_Contacts, min_licks=5);
 
 % This trials2remove are indices into R1 and R4_Contacts, not trial numbers
 

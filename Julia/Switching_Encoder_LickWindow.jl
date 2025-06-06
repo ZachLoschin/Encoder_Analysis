@@ -19,15 +19,15 @@ include(".\\Zutils.jl")
 # using StatsPlots
 
 # For testing and debugging
-Random.seed!(1234);
+# Random.seed!(1234);
 
 const SSD = StateSpaceDynamics
 
-base_path = "C:\\Research\\Encoder_Modeling\\Encoder_Analysis\\Processed_Encoder\\R14_ToInclude\\"
+base_path = "C:\\Research\\Encoder_Modeling\\Encoder_Analysis\\Processed_Encoder\\R14_Stragglers\\"
 session_folders = filter(isdir, glob("*", base_path))
 
 for session_path in session_folders
-    try
+    # try
         session = splitpath(session_path)[end]
         session_save = replace(session, "-" => "_")
         println("sessin save: ", session_save)
@@ -62,29 +62,31 @@ for session_path in session_folders
 
         println("LOADED DATA")
 
-        if occursin("TD3d", session)
-            println("TD3d shift fixed")
-            """
-            Cut the kinematics up (in the case of the TD3d shift)
-            """
+        # This should be fixed in the preprocessing now. Manually change the 0.5 to 1.0 in findPosition.m
 
-            KP_R1 = [el[51:end, :] for el in KP_R1];
-            KP_R4 = [el[51:end, :] for el in KP_R4];
-            KP_R1_Cut = [el[51:end, :] for el in KP_R1_Cut];
-            KP_R4_Cut = [el[51:end, :] for el in KP_R4_Cut];
+        # if occursin("TD3d", session)
+        #     println("TD3d shift fixed")
+        #     """
+        #     Cut the kinematics up (in the case of the TD3d shift)
+        #     """
+
+        #     KP_R1 = [el[51:end, :] for el in KP_R1];
+        #     KP_R4 = [el[51:end, :] for el in KP_R4];
+        #     KP_R1_Cut = [el[51:end, :] for el in KP_R1_Cut];
+        #     KP_R4_Cut = [el[51:end, :] for el in KP_R4_Cut];
 
 
-            """
-            Cut from the end of neural data to conserve sizes
-            """
-            PCA_P1_R1 = [el[1:end-50, :] for el in PCA_P1_R1];
-            PCA_P1_R4 = [el[1:end-50, :] for el in PCA_P1_R4];
-            PCA_P1_R1_Cut = [el[1:end-50, :] for el in PCA_P1_R1_Cut];
-            PCA_P1_R4_Cut = [el[1:end-50, :] for el in PCA_P1_R4_Cut];
+        #     """
+        #     Cut from the end of neural data to conserve sizes
+        #     """
+        #     PCA_P1_R1 = [el[1:end-50, :] for el in PCA_P1_R1];
+        #     PCA_P1_R4 = [el[1:end-50, :] for el in PCA_P1_R4];
+        #     PCA_P1_R1_Cut = [el[1:end-50, :] for el in PCA_P1_R1_Cut];
+        #     PCA_P1_R4_Cut = [el[1:end-50, :] for el in PCA_P1_R4_Cut];
 
-            Tongue_mat_R1 = Tongue_mat_R1[50:end, :]
-            Tongue_mat_R4 = Tongue_mat_R4[50:end, :]
-        end
+        #     Tongue_mat_R1 = Tongue_mat_R1[50:end, :]
+        #     Tongue_mat_R4 = Tongue_mat_R4[50:end, :]
+        # end
 
         # 1:17, 20:24
         # Drop certain features if necessary
@@ -167,15 +169,15 @@ for session_path in session_folders
         Y_eng = cat(Y_R1, Y_R4, dims=1)
 
 
-        X_R1 = [X_R1_kernel[i][LRCs_R1[i]-7:(LRCs_R1[i]), :] for i in eachindex(X_R1_kernel)]
-        X_R4 = [X_R4_kernel[i][LRCs_R4[i]-7:(LRCs_R4[i]), :]  for i in eachindex(X_R4_kernel)]
+        # X_R1 = [X_R1_kernel[i][LRCs_R1[i]-7:(LRCs_R1[i]), :] for i in eachindex(X_R1_kernel)]
+        # X_R4 = [X_R4_kernel[i][LRCs_R4[i]-7:(LRCs_R4[i]), :]  for i in eachindex(X_R4_kernel)]
 
-        Y_R1 = [Y_R1_trimmed[i][LRCs_R1[i]-7:(LRCs_R1[i]), :]  for i in eachindex(Y_R1_trimmed)]
-        Y_R4 = [Y_R4_trimmed[i][LRCs_R4[i]-7:(LRCs_R4[i]), :]  for i in eachindex(Y_R4_trimmed)]
+        # Y_R1 = [Y_R1_trimmed[i][LRCs_R1[i]-7:(LRCs_R1[i]), :]  for i in eachindex(Y_R1_trimmed)]
+        # Y_R4 = [Y_R4_trimmed[i][LRCs_R4[i]-7:(LRCs_R4[i]), :]  for i in eachindex(Y_R4_trimmed)]
 
 
-        X_diseng = cat(X_R1, X_R4, dims=1)
-        Y_diseng = cat(Y_R1, Y_R4, dims=1)
+        # X_diseng = cat(X_R1, X_R4, dims=1)
+        # Y_diseng = cat(Y_R1, Y_R4, dims=1)
 
         # Prefit engaged model
         X_eng = vcat(X_eng...)
@@ -505,21 +507,21 @@ for session_path in session_folders
         println("SESSION DATA SAVED")
 
 
-    catch err
-        # Prepare error message as a string
-        error_msg = IOBuffer()
-        println(error_msg, "Error: ", err)
-        println(error_msg, "Stacktrace:")
-        for frame in stacktrace(catch_backtrace())
-            println(error_msg, frame)
-        end
+    # catch err
+    #     # Prepare error message as a string
+    #     error_msg = IOBuffer()
+    #     println(error_msg, "Error: ", err)
+    #     println(error_msg, "Stacktrace:")
+    #     for frame in stacktrace(catch_backtrace())
+    #         println(error_msg, frame)
+    #     end
 
-        # # Save to file
-        # error_file = joinpath("Results_Window", session_save, "KP2PC", "error_log.txt")
-        # open(error_file, "w") do f
-        #     write(f, String(take!(error_msg)))
-        # end
-    end
+    #     # # Save to file
+    #     # error_file = joinpath("Results_Window", session_save, "KP2PC", "error_log.txt")
+    #     # open(error_file, "w") do f
+    #     #     write(f, String(take!(error_msg)))
+    #     # end
+    # end
 end
 
 

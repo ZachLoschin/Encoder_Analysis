@@ -1468,6 +1468,7 @@ for ij = 1:length(session_dirs)
         close all;
     catch
         disp("Error")
+        disp(save_dir)
     end
 
 
