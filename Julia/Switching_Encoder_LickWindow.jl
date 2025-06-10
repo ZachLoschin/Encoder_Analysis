@@ -62,35 +62,6 @@ for session_path in session_folders
 
         println("LOADED DATA")
 
-        # This should be fixed in the preprocessing now. Manually change the 0.5 to 1.0 in findPosition.m
-
-        # if occursin("TD3d", session)
-        #     println("TD3d shift fixed")
-        #     """
-        #     Cut the kinematics up (in the case of the TD3d shift)
-        #     """
-
-        #     KP_R1 = [el[51:end, :] for el in KP_R1];
-        #     KP_R4 = [el[51:end, :] for el in KP_R4];
-        #     KP_R1_Cut = [el[51:end, :] for el in KP_R1_Cut];
-        #     KP_R4_Cut = [el[51:end, :] for el in KP_R4_Cut];
-
-
-        #     """
-        #     Cut from the end of neural data to conserve sizes
-        #     """
-        #     PCA_P1_R1 = [el[1:end-50, :] for el in PCA_P1_R1];
-        #     PCA_P1_R4 = [el[1:end-50, :] for el in PCA_P1_R4];
-        #     PCA_P1_R1_Cut = [el[1:end-50, :] for el in PCA_P1_R1_Cut];
-        #     PCA_P1_R4_Cut = [el[1:end-50, :] for el in PCA_P1_R4_Cut];
-
-        #     Tongue_mat_R1 = Tongue_mat_R1[50:end, :]
-        #     Tongue_mat_R4 = Tongue_mat_R4[50:end, :]
-        # end
-
-        # 1:17, 20:24
-        # Drop certain features if necessary
-
         # KP_R4 = [dropdims(el[:, vcat(1:17, 20:24), :]; dims=3) for el in KP_R4]
         # KP_R1 = [dropdims(el[:, vcat(1:17, 20:24), :]; dims=3) for el in KP_R1]
         # KP_R4_Cut = [dropdims(el[:, vcat(1:17, 20:24), :]; dims=3) for el in KP_R4_Cut]
@@ -225,7 +196,8 @@ for session_path in session_folders
 
         model.B[1].β = β_eng
         model.B[1].Σ = Σ_eng
-
+        model.B[1].λ = 0.0
+        model.B[2].λ = 0.0
 
         # model.B[2].β = β_diseng
         # model.B[2].Σ = Σ_eng
@@ -473,11 +445,11 @@ for session_path in session_folders
         VITERBI STATES SAVED
         """
 
-        if !isdir(joinpath("Results_Window_R14_NoReg\\" *session_save))
-            mkpath(joinpath("Results_Window_R14_NoReg\\" *session_save))
+        if !isdir(joinpath("Results_Window_R14_UpdatedSigma\\" *session_save))
+            mkpath(joinpath("Results_Window_R14_UpdatedSigma\\" *session_save))
         end
 
-        println("**SAVE PATH**", (joinpath("Results_Window_R14_NoReg\\" *session_save, "R14_PC_R2_Reg.csv")))
+        println("**SAVE PATH**", (joinpath("Results_Window_R14_UpdatedSigma\\" *session_save, "R14_PC_R2_Reg.csv")))
 
         println("AMEN BROTHER")
         R4_States_Vit_df = DataFrame(R4_Vit, :auto)
@@ -492,17 +464,17 @@ for session_path in session_folders
         println("HERE")
         println(session_save)
 
-        CSV.write(joinpath("Results_Window_R14_NoReg\\" *session_save, "R14_PC_R2_Reg.csv"), mean_r2_df; header=false)
+        CSV.write(joinpath("Results_Window_R14_UpdatedSigma\\" *session_save, "R14_PC_R2_Reg.csv"), mean_r2_df; header=false)
         println("EHRHEHEHE")
         
-        CSV.write(joinpath("Results_Window_R14_NoReg\\" *session_save, "R14_States_Reg.csv"), R4_States_df; header=false)
-        CSV.write(joinpath("Results_Window_R14_NoReg\\" *session_save, "R1_States_Reg.csv"), R1_States_df; header=false)
-        CSV.write(joinpath("Results_Window_R14_NoReg\\" *session_save, "R14_States_Vit_Reg.csv"), R4_States_Vit_df; header=false)
-        CSV.write(joinpath("Results_Window_R14_NoReg\\" *session_save, "R1_States_Vit_Reg.csv"), R1_States_Vit_df; header=false)
+        CSV.write(joinpath("Results_Window_R14_UpdatedSigma\\" *session_save, "R14_States_Reg.csv"), R4_States_df; header=false)
+        CSV.write(joinpath("Results_Window_R14_UpdatedSigma\\" *session_save, "R1_States_Reg.csv"), R1_States_df; header=false)
+        CSV.write(joinpath("Results_Window_R14_UpdatedSigma\\" *session_save, "R14_States_Vit_Reg.csv"), R4_States_Vit_df; header=false)
+        CSV.write(joinpath("Results_Window_R14_UpdatedSigma\\" *session_save, "R1_States_Vit_Reg.csv"), R1_States_Vit_df; header=false)
 
         println("ALMSOT ALL SAVED")
-        CSV.write(joinpath("Results_Window_R14_NoReg\\" *session_save, "R14_Tongue_Reg.csv"), R4_Tongue_df; header=false)
-        CSV.write(joinpath("Results_Window_R14_NoReg\\" *session_save, "R1_Tongue_Reg.csv"), R1_Tongue_df; header=false)
+        CSV.write(joinpath("Results_Window_R14_UpdatedSigma\\" *session_save, "R14_Tongue_Reg.csv"), R4_Tongue_df; header=false)
+        CSV.write(joinpath("Results_Window_R14_UpdatedSigma\\" *session_save, "R1_Tongue_Reg.csv"), R1_Tongue_df; header=false)
 
         println("SESSION DATA SAVED")
 
