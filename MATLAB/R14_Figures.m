@@ -15,7 +15,7 @@ close all
 
 
 %% Import the state inference and tongue data
-base_dir = 'C:\Research\Encoder_Modeling\Encoder_Analysis\Results_Window_R14_NoReg';
+base_dir = 'C:\Research\Encoder_Modeling\Encoder_Analysis\Results_Window_R14_UpdatedSigma';
 alt_base_dir = 'C:\Research\Encoder_Modeling\Encoder_Analysis\Processed_Encoder\R14_529_4thlick';
 subfolder = '';
 
@@ -285,6 +285,7 @@ for ij = 1:length(session_dirs)
         xticks([0 60 110 160 210]); % Position of ticks
         xticklabels({'-0.1', '0.5', '1.0', '1.5', '2.0'}); % Labels corresponding to time in seconds
         xlim([0, 200])
+        ylim([0, 1])
         title("Trial Averaged Inference")
         
         xline(11, "--k", "LineWidth", 1)

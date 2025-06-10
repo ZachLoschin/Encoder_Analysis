@@ -11,8 +11,8 @@ clear;
 clc;
 close all
 %% Import the state inference and tongue data
-base_dir = 'C:\Research\Encoder_Modeling\Encoder_Analysis\Results_Window_R14_NoReg';
-summary_dir = 'C:\Research\Encoder_Modeling\Encoder_Analysis\Results_Window_R14_NoReg\Summary_Figs';
+base_dir = 'C:\Research\Encoder_Modeling\Encoder_Analysis\Results_Window_R14_UpdatedSigma';
+summary_dir = 'C:\Research\Encoder_Modeling\Encoder_Analysis\Results_Window_R14_UpdatedSigma\Summary_Figs';
 alt_base_dir = 'C:\Research\Encoder_Modeling\Encoder_Analysis\Processed_Encoder\R14_529_4thlick';
 subfolder = '';
 
