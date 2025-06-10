@@ -69,39 +69,26 @@ end
 # function SSD.update_transition_matrix!(
 #     model::SSD.AbstractHMM, FB_storage_vec::Vector{SSD.ForwardBackward{Float64}}
 # )
-#     println("Custom transition matrix")
-#     for j in 1:(model.K)
-#         for k in 1:(model.K)
-#             num = exp(SSD.logsumexp(vcat([FB_trial.ξ[j, k, :] for FB_trial in FB_storage_vec]...)))
-#             denom = exp.(SSD.logsumexp(vcat([FB_trial.ξ[j, :, :]' for FB_trial in FB_storage_vec]...)))  # this logsumexp takes care of both sums in denom
-#             model.A[j,k] = num / denom
+#     # println("Custom transition matrix large sticky")
+#     println("No A prior rn")
+#     A_temp = zeros(model.K, model.K)
+
+#     for j in 1:model.K
+#         for k in 1:model.K
+#             A_temp[j, k] = exp(SSD.logsumexp(vcat([FB_trial.ξ[j, k, :] for FB_trial in FB_storage_vec]...)))
 #         end
 #     end
+
+#     for k in 1:model.K
+#         A_temp[k, k] += 0
+#     end
+
+#     # renorm
+#     for j in 1:model.K
+#         row_sum = sum(A_temp[j, :])
+#         model.A[j, :] = A_temp[j, :] ./ row_sum
+#     end
 # end
-
-function SSD.update_transition_matrix!(
-    model::SSD.AbstractHMM, FB_storage_vec::Vector{SSD.ForwardBackward{Float64}}
-)
-    # println("Custom transition matrix large sticky")
-    println("No A prior rn")
-    A_temp = zeros(model.K, model.K)
-
-    for j in 1:model.K
-        for k in 1:model.K
-            A_temp[j, k] = exp(SSD.logsumexp(vcat([FB_trial.ξ[j, k, :] for FB_trial in FB_storage_vec]...)))
-        end
-    end
-
-    for k in 1:model.K
-        A_temp[k, k] += 0
-    end
-
-    # renorm
-    for j in 1:model.K
-        row_sum = sum(A_temp[j, :])
-        model.A[j, :] = A_temp[j, :] ./ row_sum
-    end
-end
 
 
 
@@ -120,43 +107,71 @@ function SSD.update_emissions!(model::SSD.AbstractHMM, FB_storage::SSD.ForwardBa
     end
 end
 
-
-function weighted_ridge_regression(X::Matrix{Float64}, Y::Matrix{Float64}, λ::Float64; w::Vector{Float64}=ones(size(X,1)))
-    @assert size(X, 1) == size(Y, 1) == length(w) "Number of rows in X, Y, and length of w must match"
+function weighted_ridge_regression(
+    X::Matrix{Float64},
+    Y::Matrix{Float64},
+    λ::Float64;
+    w::Vector{Float64}=ones(size(X, 1))
+)
+    @assert size(X, 1) == size(Y, 1) == length(w)
 
     N, D = size(X)
-    X_bias = hcat(ones(N), X)  # Add intercept column
-
-    # Apply weights
+    X_bias = hcat(ones(N), X)
     W = Diagonal(w)
-    Xw = W * X_bias
-    Yw = W * Y
 
-    # Regularization: do not regularize the intercept term (first row/col)
+    A = X_bias' * W * X_bias
+    b = X_bias' * W * Y
+
+    # Ridge regularization (don't penalize intercept)
     reg = zeros(D + 1, D + 1)
     reg[2:end, 2:end] .= λ
 
-    # A = X_bias' * Xw + reg
+    β = (A + reg) \ b
 
-    # REG REMOVED
-    A = X_bias' * Xw #+ reg
-
-    b = X_bias' * Yw
-
-    cond_A = cond(A)
-    # Update the WLS fit
-    # β = (X_bias'Xw + reg) \ (X_bias'Yw)
-
-    # REG REMOVED
-    β = (X_bias'Xw) \ (X_bias'Yw)
-
-    # Update the WLS variance
     residuals = Y - X_bias * β
-    Σ = (residuals' * W * residuals) / size(X, 1)
-    Σ = 0.5 * (Σ + Σ') # Ensure symmetry
+    Σ = (residuals' * W * residuals) / sum(w)
+    Σ = 0.5 * (Σ + Σ')  # Force symmetry
 
     return β, Σ
 end
+
+
+# function weighted_ridge_regression(X::Matrix{Float64}, Y::Matrix{Float64}, λ::Float64; w::Vector{Float64}=ones(size(X,1)))
+#     @assert size(X, 1) == size(Y, 1) == length(w) "Number of rows in X, Y, and length of w must match"
+
+#     N, D = size(X)
+#     X_bias = hcat(ones(N), X)  # Add intercept column
+
+#     # Apply weights
+#     W = Diagonal(w)
+#     Xw = W * X_bias
+#     Yw = W * Y
+
+#     # Regularization: do not regularize the intercept term (first row/col)
+#     reg = zeros(D + 1, D + 1)
+#     reg[2:end, 2:end] .= λ
+
+#     # A = X_bias' * Xw + reg
+
+#     # REG REMOVED
+#     A = X_bias' * Xw #+ reg
+
+#     b = X_bias' * Yw
+
+#     cond_A = cond(A)
+#     # Update the WLS fit
+#     # β = (X_bias'Xw + reg) \ (X_bias'Yw)
+
+#     # REG REMOVED
+#     β = (X_bias'Xw) \ (X_bias'Yw)
+
+#     # Update the WLS variance
+#     residuals = Y - X_bias * β
+#     Σ = (residuals' * W * residuals) / size(X, 1)
+#     Σ = 0.5 * (Σ + Σ') # Ensure symmetry
+
+#     return β, Σ
+# end
 
 
 
