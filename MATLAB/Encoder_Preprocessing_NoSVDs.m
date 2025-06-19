@@ -3,10 +3,21 @@
 % May 2025
 % Cleaning up preprocessing file for MC engagement analysis
 
+
 %% Finding "Kinematic Modes"
 clear,clc
 
-d = 'C:\Research\Encoder_Modeling\Encoder_Analysis\Economo-Lab-Preprocessing';
+% Check if running on desktop or laptop
+[~, hostname] = system('hostname');
+hostname = strtrim(hostname);
+
+if hostname == "DESKTOP-5JJC0TM"
+    d = "C:\Users\zlosc\Documents\GitHub\Encoder_Analysis\Economo-Lab-Preprocessing";
+else
+    d = 'C:\Research\Encoder_Modeling\Encoder_Analysis\Economo-Lab-Preprocessing';
+end
+
+
 addpath(d)
 addpath(genpath(fullfile(d,'utils')))
 addpath(genpath(fullfile(d,'zutils')))
@@ -64,7 +75,7 @@ params.fa = false;         % if true, reduces neural dimensions to 10 with facto
 params.bctype = 'reflect'; % options are : reflect  zeropad  none
 
 %% SPECIFY DATA TO LOAD
-datapth = 'C:\Research\Encoder_Modeling\Encoder_Analysis\Data\processed sessions\r14';
+datapth = 'C:\Users\zlosc\Documents\GitHub\Encoder_Analysis\Data\processed sessions\r14';
 meta = [];
 
 meta = loadTD(meta,datapth);
@@ -406,9 +417,16 @@ sessionName = meta.anm;
 sessionDate = meta.date;
 
 % Construct the output folder path
-outputFolder = fullfile( ...
-    'C:\Research\Encoder_Modeling\Encoder_Analysis\Processed_Encoder\R14_Manual', ...
-    [sessionName '_' sessionDate ]);
+
+if hostname == "DESKTOP-5JJC0TM"
+    outputFolder = fullfile(...
+        'C:\Users\zlosc\Documents\GitHub\Encoder_Analysis\Preprocessed_Encoder\R14_Manual', ...
+        [sessionName '_' sessionDate ]);
+else
+    outputFolder = fullfile( ...
+        'C:\Research\Encoder_Modeling\Encoder_Analysis\Processed_Encoder\R14_Manual', ...
+        [sessionName '_' sessionDate ]);
+end
 
 % Create the output folder if it does not exist
 if ~exist(outputFolder, 'dir')
