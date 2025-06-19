@@ -1,6 +1,6 @@
 # Ignore all data files and processed data
 Data/
-Processed_Encoder/
+Preprocessed_Encoder/
 Results**
 
 **.csv
