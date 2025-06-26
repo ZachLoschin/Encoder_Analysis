@@ -23,11 +23,11 @@ include(".\\Zutils.jl")
 
 const SSD = StateSpaceDynamics
 
-base_path = "C:\\Research\\Encoder_Modeling\\Encoder_Analysis\\Processed_Encoder\\R14_Stragglers\\"
+base_path = "C:\\Research\\Encoder_Modeling\\Encoder_Analysis\\Processed_Encoder\\R14\\"
 session_folders = filter(isdir, glob("*", base_path))
 
 for session_path in session_folders
-    # try
+    try
         session = splitpath(session_path)[end]
         session_save = replace(session, "-" => "_")
         println("sessin save: ", session_save)
@@ -154,7 +154,7 @@ for session_path in session_folders
         X_eng = vcat(X_eng...)
         Y_eng = vcat(Y_eng...)
 
-        β_eng, Σ_eng = weighted_ridge_regression(X_eng, Y_eng, 0.01)
+        β_eng, Σ_eng = weighted_ridge_regression(X_eng, Y_eng, 0.1)
 
         # # seems to be a problem with X
         # X_diseng = vcat(X_diseng...)
@@ -445,13 +445,12 @@ for session_path in session_folders
         VITERBI STATES SAVED
         """
 
-        if !isdir(joinpath("Results_Window_R14_UpdatedSigma\\" *session_save))
-            mkpath(joinpath("Results_Window_R14_UpdatedSigma\\" *session_save))
+        if !isdir(joinpath("Results_Window_R14\\" *session_save))
+            mkpath(joinpath("Results_Window_R14\\" *session_save))
         end
 
-        println("**SAVE PATH**", (joinpath("Results_Window_R14_UpdatedSigma\\" *session_save, "R14_PC_R2_Reg.csv")))
+        println("**SAVE PATH**", (joinpath("Results_Window_R14\\" *session_save, "R14_PC_R2_Reg.csv")))
 
-        println("AMEN BROTHER")
         R4_States_Vit_df = DataFrame(R4_Vit, :auto)
         R1_States_Vit_df = DataFrame(R1_Vit, :auto)
         R4_States_df = DataFrame(R4_States, :auto)
@@ -461,39 +460,36 @@ for session_path in session_folders
         # Convert to DataFrame
         mean_r2_df = DataFrame(mean_r2_per_pc', :auto)  # make it a 1×12 DataFrame
 
-        println("HERE")
-        println(session_save)
 
-        CSV.write(joinpath("Results_Window_R14_UpdatedSigma\\" *session_save, "R14_PC_R2_Reg.csv"), mean_r2_df; header=false)
-        println("EHRHEHEHE")
+        CSV.write(joinpath("Results_Window_R14\\" *session_save, "R14_PC_R2_Reg.csv"), mean_r2_df; header=false)
+
         
-        CSV.write(joinpath("Results_Window_R14_UpdatedSigma\\" *session_save, "R14_States_Reg.csv"), R4_States_df; header=false)
-        CSV.write(joinpath("Results_Window_R14_UpdatedSigma\\" *session_save, "R1_States_Reg.csv"), R1_States_df; header=false)
-        CSV.write(joinpath("Results_Window_R14_UpdatedSigma\\" *session_save, "R14_States_Vit_Reg.csv"), R4_States_Vit_df; header=false)
-        CSV.write(joinpath("Results_Window_R14_UpdatedSigma\\" *session_save, "R1_States_Vit_Reg.csv"), R1_States_Vit_df; header=false)
+        CSV.write(joinpath("Results_Window_R14\\" *session_save, "R14_States_Reg.csv"), R4_States_df; header=false)
+        CSV.write(joinpath("Results_Window_R14\\" *session_save, "R1_States_Reg.csv"), R1_States_df; header=false)
+        CSV.write(joinpath("Results_Window_R14\\" *session_save, "R14_States_Vit_Reg.csv"), R4_States_Vit_df; header=false)
+        CSV.write(joinpath("Results_Window_R14\\" *session_save, "R1_States_Vit_Reg.csv"), R1_States_Vit_df; header=false)
 
-        println("ALMSOT ALL SAVED")
-        CSV.write(joinpath("Results_Window_R14_UpdatedSigma\\" *session_save, "R14_Tongue_Reg.csv"), R4_Tongue_df; header=false)
-        CSV.write(joinpath("Results_Window_R14_UpdatedSigma\\" *session_save, "R1_Tongue_Reg.csv"), R1_Tongue_df; header=false)
+        CSV.write(joinpath("Results_Window_R14\\" *session_save, "R14_Tongue_Reg.csv"), R4_Tongue_df; header=false)
+        CSV.write(joinpath("Results_Window_R14\\" *session_save, "R1_Tongue_Reg.csv"), R1_Tongue_df; header=false)
 
         println("SESSION DATA SAVED")
 
 
-    # catch err
-    #     # Prepare error message as a string
-    #     error_msg = IOBuffer()
-    #     println(error_msg, "Error: ", err)
-    #     println(error_msg, "Stacktrace:")
-    #     for frame in stacktrace(catch_backtrace())
-    #         println(error_msg, frame)
-    #     end
+    catch err
+        # Prepare error message as a string
+        error_msg = IOBuffer()
+        println(error_msg, "Error: ", err)
+        println(error_msg, "Stacktrace:")
+        for frame in stacktrace(catch_backtrace())
+            println(error_msg, frame)
+        end
 
-    #     # # Save to file
-    #     # error_file = joinpath("Results_Window", session_save, "KP2PC", "error_log.txt")
-    #     # open(error_file, "w") do f
-    #     #     write(f, String(take!(error_msg)))
-    #     # end
-    # end
+        # # Save to file
+        # error_file = joinpath("Results_Window", session_save, "KP2PC", "error_log.txt")
+        # open(error_file, "w") do f
+        #     write(f, String(take!(error_msg)))
+        # end
+    end
 end
 
 

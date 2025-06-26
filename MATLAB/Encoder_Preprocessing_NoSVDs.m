@@ -75,7 +75,13 @@ params.fa = false;         % if true, reduces neural dimensions to 10 with facto
 params.bctype = 'reflect'; % options are : reflect  zeropad  none
 
 %% SPECIFY DATA TO LOAD
-datapth = 'C:\Users\zlosc\Documents\GitHub\Encoder_Analysis\Data\processed sessions\r14';
+
+if hostname == "DESKTOP-5JJC0TM"
+    datapth = 'C:\Users\zlosc\Documents\GitHub\Encoder_Analysis\Data\processed sessions\r14';
+else
+    datapth = 'C:\Research\Encoder_Modeling\Encoder_Analysis\Data\processed sessions\r14';
+end
+
 meta = [];
 
 meta = loadTD(meta,datapth);
@@ -420,11 +426,11 @@ sessionDate = meta.date;
 
 if hostname == "DESKTOP-5JJC0TM"
     outputFolder = fullfile(...
-        'C:\Users\zlosc\Documents\GitHub\Encoder_Analysis\Preprocessed_Encoder\R14_Manual', ...
+        'C:\Users\zlosc\Documents\GitHub\Encoder_Analysis\Preprocessed_Encoder\R14', ...
         [sessionName '_' sessionDate ]);
 else
     outputFolder = fullfile( ...
-        'C:\Research\Encoder_Modeling\Encoder_Analysis\Processed_Encoder\R14_Manual', ...
+        'C:\Research\Encoder_Modeling\Encoder_Analysis\Processed_Encoder\R14', ...
         [sessionName '_' sessionDate ]);
 end
 

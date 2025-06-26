@@ -11,10 +11,21 @@ clear;
 clc;
 close all
 %% Import the state inference and tongue data
-base_dir = 'C:\Research\Encoder_Modeling\Encoder_Analysis\Results_Window_R14_UpdatedSigma';
-summary_dir = 'C:\Research\Encoder_Modeling\Encoder_Analysis\Results_Window_R14_UpdatedSigma\Summary_Figs';
-alt_base_dir = 'C:\Research\Encoder_Modeling\Encoder_Analysis\Processed_Encoder\R14_529_4thlick';
+base_dir = 'C:\Research\Encoder_Modeling\Encoder_Analysis\Results_Window_R14';
+summary_dir = 'C:\Research\Encoder_Modeling\Encoder_Analysis\Results_Window_R14\Summary_Figs_S1';
+alt_base_dir = 'C:\Research\Encoder_Modeling\Encoder_Analysis\Processed_Encoder\R14';
 subfolder = '';
+
+%% Load metadata table
+metadata = readtable('R14_Session_Metadata.xlsx');  % Your Excel saved as CSV
+
+%% Filter the metadata for sessions to include
+valid_sessions = metadata(metadata.To_include == 1 & strcmp(metadata.Location, 'S1'), :);
+
+% Preprocess metadata session naming format: 'TD13d_2024_11_10_P1'
+valid_session_names = strcat(valid_sessions.Animal, "_", ...
+                              valid_sessions.Session, "_", ...
+                              valid_sessions.Probe);
 
 % Get list of all subfolders in base_dir
 session_dirs = dir(base_dir);
@@ -31,10 +42,18 @@ R4_D_HM = [];
 for ij = 1:length(session_dirs)
     try
         session_name = session_dirs(ij).name;
+        
+        if ~ismember(session_name, valid_session_names)
+            fprintf('Skipping %s — not in metadata or not marked for inclusion.\n', session_name);
+            continue;
+        end
+        
         save_dir = fullfile(base_dir, session_name, subfolder);
         
         % Look for the same folder name in the alternate base directory
         alt_session_dir = fullfile(alt_base_dir, session_name);
+
+
     
         if isfolder(alt_session_dir)
             fprintf('Found matching folder for %s in alt_base_dir.\n', session_name);

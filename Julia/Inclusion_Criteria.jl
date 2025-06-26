@@ -23,7 +23,7 @@ Random.seed!(1234);
 
 const SSD = StateSpaceDynamics
 
-base_path = "C:\\Research\\Encoder_Modeling\\Encoder_Analysis\\Processed_Encoder\\R14_Not_Filtered\\"
+base_path = "C:\\Research\\Encoder_Modeling\\Encoder_Analysis\\Processed_Encoder\\R14\\"
 session_folders = filter(isdir, glob("*", base_path))
 
 all_r2scores = DataFrame(Session = String[], R2_PC1 = Float64[], R2_PC2 = Float64[])
@@ -61,27 +61,28 @@ for session_path in session_folders
             Probe11_R4_Cut, Probe1_R4_Cut, PCA_P11_R4_Cut, PCA_P1_R4_Cut, KP_R4_Cut, FCs_R4, SCs_R4, LRCs_R4, Tongue_mat_R4, Jaw_R4_Cut = load_data_encoder_cut_noSVD(session_path, "R4")
         end
 
+        println(size(Probe1_R1), size(KP_R1))
 
-        if occursin("TD3d", session)
-            println("TD3d shift fixed")
-            """
-            Cut the kinematics up (in the case of the TD3d shift)
-            """
+        # if occursin("TD3d", session)
+        #     println("TD3d shift fixed")
+        #     """
+        #     Cut the kinematics up (in the case of the TD3d shift)
+        #     """
 
-            KP_R1 = [el[51:end, :] for el in KP_R1];
-            KP_R4 = [el[51:end, :] for el in KP_R4];
-            KP_R1_Cut = [el[51:end, :] for el in KP_R1_Cut];
-            KP_R4_Cut = [el[51:end, :] for el in KP_R4_Cut];
+        #     KP_R1 = [el[51:end, :] for el in KP_R1];
+        #     KP_R4 = [el[51:end, :] for el in KP_R4];
+        #     KP_R1_Cut = [el[51:end, :] for el in KP_R1_Cut];
+        #     KP_R4_Cut = [el[51:end, :] for el in KP_R4_Cut];
 
 
-            """
-            Cut from the end of neural data to conserve sizes
-            """
-            PCA_P1_R1 = [el[1:end-50, :] for el in PCA_P1_R1];
-            PCA_P1_R4 = [el[1:end-50, :] for el in PCA_P1_R4];
-            PCA_P1_R1_Cut = [el[1:end-50, :] for el in PCA_P1_R1_Cut];
-            PCA_P1_R4_Cut = [el[1:end-50, :] for el in PCA_P1_R4_Cut];
-        end
+        #     """
+        #     Cut from the end of neural data to conserve sizes
+        #     """
+        #     PCA_P1_R1 = [el[1:end-50, :] for el in PCA_P1_R1];
+        #     PCA_P1_R4 = [el[1:end-50, :] for el in PCA_P1_R4];
+        #     PCA_P1_R1_Cut = [el[1:end-50, :] for el in PCA_P1_R1_Cut];
+        #     PCA_P1_R4_Cut = [el[1:end-50, :] for el in PCA_P1_R4_Cut];
+        # end
 
         # Assuming KP_R1 is a vector of matrices
         for i in 1:length(KP_R1)
@@ -155,11 +156,13 @@ for session_path in session_folders
         X_eng_tr = cat(X_R1, X_R4, dims=1)
         Y_eng_tr = cat(Y_R1, Y_R4, dims=1)
 
+
         # Prefit engaged model
         X_eng = vcat(X_eng_tr...)
         Y_eng = vcat(Y_eng_tr...)
 
-        β_eng, Σ_eng = weighted_ridge_regression(X_eng, Y_eng, 0.01)
+        println("Weighted Ridge")
+        β_eng, Σ_eng = weighted_ridge_regression(X_eng, Y_eng, 0.1)
 
 
 
@@ -193,11 +196,11 @@ for session_path in session_folders
     #         println(error_msg, frame)
     #     end
 
-    #     # # Save to file
-    #     # error_file = joinpath("Results_Window", session_save, "KP2PC", "error_log.txt")
-    #     # open(error_file, "w") do f
-    #     #     write(f, String(take!(error_msg)))
-    #     # end
+        # # Save to file
+        # error_file = joinpath("Results_Window", session_save, "KP2PC", "error_log.txt")
+        # open(error_file, "w") do f
+        #     write(f, String(take!(error_msg)))
+        # end
     # end
 end
 

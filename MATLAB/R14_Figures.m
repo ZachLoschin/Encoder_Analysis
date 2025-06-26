@@ -15,8 +15,8 @@ close all
 
 
 %% Import the state inference and tongue data
-base_dir = 'C:\Research\Encoder_Modeling\Encoder_Analysis\Julia\Manual_Results\';
-alt_base_dir = 'C:\Research\Encoder_Modeling\Encoder_Analysis\Processed_Encoder\R14_Manual';
+base_dir = 'C:\Research\Encoder_Modeling\Encoder_Analysis\Results_Window_R14\';
+alt_base_dir = 'C:\Research\Encoder_Modeling\Encoder_Analysis\Processed_Encoder\R14';
 subfolder = '';
 
 % Get list of all subfolders in base_dir

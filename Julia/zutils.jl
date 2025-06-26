@@ -125,20 +125,20 @@ end
 
 
 
-# function SSD.update_emissions!(model::SSD.AbstractHMM, FB_storage::SSD.ForwardBackward, data)
-#     # println("Using WLS")
-#     # update regression models
-#     w = exp.(permutedims(FB_storage.γ))
+function SSD.update_emissions!(model::SSD.AbstractHMM, FB_storage::SSD.ForwardBackward, data)
+    # println("Using WLS")
+    # update regression models
+    w = exp.(permutedims(FB_storage.γ))
 
-#     # println("Weights same across states? ", all(w[:,1] .== w[:,2]))
+    # println("Weights same across states? ", all(w[:,1] .== w[:,2]))
 
-#     # check threading speed here
-#     for k in 1:(model.K)
-#         β, Σ = weighted_ridge_regression(data..., model.B[1].λ, w=w[:,k])
-#         model.B[k].β = β
-#         model.B[k].Σ = Σ
-#     end
-# end
+    # check threading speed here
+    for k in 1:(model.K)
+        β, Σ = weighted_ridge_regression(data..., model.B[1].λ, w=w[:,k])
+        model.B[k].β = β
+        model.B[k].Σ = Σ
+    end
+end
 
 function weighted_ridge_regression(
     X::Matrix{Float64},
