@@ -108,8 +108,8 @@ for session_path in session_folders
         X_R4 = [X[start_time-lags+1:end,:] for X in KP_R4]
 
 
-        Y_R1 = [Y[start_time-lags+1:end, 1:10] for Y in PCA_P1_R1]
-        Y_R4 = [Y[start_time-lags+1:end, 1:10] for Y in PCA_P1_R4]
+        Y_R1 = [Y[start_time-lags+1:end, 1:2] for Y in PCA_P1_R1]
+        Y_R4 = [Y[start_time-lags+1:end, 1:2] for Y in PCA_P1_R4]
 
         X_R1_kernel = kernelize_window_features(X_R1)
         X_R4_kernel = kernelize_window_features(X_R4)
@@ -140,15 +140,15 @@ for session_path in session_folders
         Y_eng = cat(Y_R1, Y_R4, dims=1)
 
 
-        # X_R1 = [X_R1_kernel[i][LRCs_R1[i]-7:(LRCs_R1[i]), :] for i in eachindex(X_R1_kernel)]
-        # X_R4 = [X_R4_kernel[i][LRCs_R4[i]-7:(LRCs_R4[i]), :]  for i in eachindex(X_R4_kernel)]
+        X_R1 = [X_R1_kernel[i][end-7:end, :] for i in eachindex(X_R1_kernel)]
+        X_R4 = [X_R4_kernel[i][end-7:end, :] for i in eachindex(X_R4_kernel)]
 
-        # Y_R1 = [Y_R1_trimmed[i][LRCs_R1[i]-7:(LRCs_R1[i]), :]  for i in eachindex(Y_R1_trimmed)]
-        # Y_R4 = [Y_R4_trimmed[i][LRCs_R4[i]-7:(LRCs_R4[i]), :]  for i in eachindex(Y_R4_trimmed)]
+        Y_R1 = [Y_R1_trimmed[i][end-7:end, :]  for i in eachindex(Y_R1_trimmed)]
+        Y_R4 = [Y_R4_trimmed[i][end-7:end, :]  for i in eachindex(Y_R4_trimmed)]
 
 
-        # X_diseng = cat(X_R1, X_R4, dims=1)
-        # Y_diseng = cat(Y_R1, Y_R4, dims=1)
+        X_diseng = cat(X_R1, X_R4, dims=1)
+        Y_diseng = cat(Y_R1, Y_R4, dims=1)
 
         # Prefit engaged model
         X_eng = vcat(X_eng...)
@@ -157,10 +157,10 @@ for session_path in session_folders
         β_eng, Σ_eng = weighted_ridge_regression(X_eng, Y_eng, 0.1)
 
         # # seems to be a problem with X
-        # X_diseng = vcat(X_diseng...)
-        # Y_diseng = vcat(Y_diseng...)
+        X_diseng = vcat(X_diseng...)
+        Y_diseng = vcat(Y_diseng...)
         
-        # β_diseng, Σ_diseng = weighted_ridge_regression(X_diseng, Y_diseng, 0.01)
+        β_diseng, Σ_diseng = weighted_ridge_regression(X_diseng, Y_diseng, 0.1)
 
 
 
@@ -174,7 +174,7 @@ for session_path in session_folders
         X = cat(X_R1, X_R4, dims=1)
 
         Y = cat(PCA_P1_R1_Cut, PCA_P1_R4_Cut, dims=1)
-        Y = [y[start_time-lags:end, 1:10] for y in Y]
+        Y = [y[start_time-lags:end, 1:2] for y in Y]
 
         # X_ready = permutedims.(X_ready)
         # Y_ready = permutedims.(Y_ready)
@@ -196,11 +196,11 @@ for session_path in session_folders
 
         model.B[1].β = β_eng
         model.B[1].Σ = Σ_eng
-        model.B[1].λ = 0.0
-        model.B[2].λ = 0.0
+        model.B[1].λ = 0.1
+        model.B[2].λ = 0.1
 
-        # model.B[2].β = β_diseng
-        # model.B[2].Σ = Σ_eng
+        model.B[2].β = β_diseng
+        model.B[2].Σ = Σ_eng
 
         model.A = [0.99 0.01; 0.01 0.99]
         model.πₖ = [0.01; 0.99]
@@ -445,11 +445,11 @@ for session_path in session_folders
         VITERBI STATES SAVED
         """
 
-        if !isdir(joinpath("Results_Window_R14\\" *session_save))
-            mkpath(joinpath("Results_Window_R14\\" *session_save))
+        if !isdir(joinpath("Results_Window_R14_2PC_Reg\\" *session_save))
+            mkpath(joinpath("Results_Window_R14_2PC_Reg\\" *session_save))
         end
 
-        println("**SAVE PATH**", (joinpath("Results_Window_R14\\" *session_save, "R14_PC_R2_Reg.csv")))
+        println("**SAVE PATH**", (joinpath("Results_Window_R14_2PC_Reg\\" *session_save, "R14_PC_R2_Reg.csv")))
 
         R4_States_Vit_df = DataFrame(R4_Vit, :auto)
         R1_States_Vit_df = DataFrame(R1_Vit, :auto)
@@ -461,16 +461,16 @@ for session_path in session_folders
         mean_r2_df = DataFrame(mean_r2_per_pc', :auto)  # make it a 1×12 DataFrame
 
 
-        CSV.write(joinpath("Results_Window_R14\\" *session_save, "R14_PC_R2_Reg.csv"), mean_r2_df; header=false)
+        CSV.write(joinpath("Results_Window_R14_2PC_Reg\\" *session_save, "R14_PC_R2_Reg.csv"), mean_r2_df; header=false)
 
         
-        CSV.write(joinpath("Results_Window_R14\\" *session_save, "R14_States_Reg.csv"), R4_States_df; header=false)
-        CSV.write(joinpath("Results_Window_R14\\" *session_save, "R1_States_Reg.csv"), R1_States_df; header=false)
-        CSV.write(joinpath("Results_Window_R14\\" *session_save, "R14_States_Vit_Reg.csv"), R4_States_Vit_df; header=false)
-        CSV.write(joinpath("Results_Window_R14\\" *session_save, "R1_States_Vit_Reg.csv"), R1_States_Vit_df; header=false)
+        CSV.write(joinpath("Results_Window_R14_2PC_Reg\\" *session_save, "R14_States_Reg.csv"), R4_States_df; header=false)
+        CSV.write(joinpath("Results_Window_R14_2PC_Reg\\" *session_save, "R1_States_Reg.csv"), R1_States_df; header=false)
+        CSV.write(joinpath("Results_Window_R14_2PC_Reg\\" *session_save, "R14_States_Vit_Reg.csv"), R4_States_Vit_df; header=false)
+        CSV.write(joinpath("Results_Window_R14_2PC_Reg\\" *session_save, "R1_States_Vit_Reg.csv"), R1_States_Vit_df; header=false)
 
-        CSV.write(joinpath("Results_Window_R14\\" *session_save, "R14_Tongue_Reg.csv"), R4_Tongue_df; header=false)
-        CSV.write(joinpath("Results_Window_R14\\" *session_save, "R1_Tongue_Reg.csv"), R1_Tongue_df; header=false)
+        CSV.write(joinpath("Results_Window_R14_2PC_Reg\\" *session_save, "R14_Tongue_Reg.csv"), R4_Tongue_df; header=false)
+        CSV.write(joinpath("Results_Window_R14_2PC_Reg\\" *session_save, "R1_Tongue_Reg.csv"), R1_Tongue_df; header=false)
 
         println("SESSION DATA SAVED")
 

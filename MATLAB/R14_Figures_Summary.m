@@ -12,7 +12,7 @@ clc;
 close all
 %% Import the state inference and tongue data
 base_dir = 'C:\Research\Encoder_Modeling\Encoder_Analysis\Results_Window_R14';
-summary_dir = 'C:\Research\Encoder_Modeling\Encoder_Analysis\Results_Window_R14\Summary_Figs_S1';
+summary_dir = 'C:\Research\Encoder_Modeling\Encoder_Analysis\Results_Window_R14\Summary_Figs_ALM';
 alt_base_dir = 'C:\Research\Encoder_Modeling\Encoder_Analysis\Processed_Encoder\R14';
 subfolder = '';
 
@@ -20,7 +20,7 @@ subfolder = '';
 metadata = readtable('R14_Session_Metadata.xlsx');  % Your Excel saved as CSV
 
 %% Filter the metadata for sessions to include
-valid_sessions = metadata(metadata.To_include == 1 & strcmp(metadata.Location, 'S1'), :);
+valid_sessions = metadata(metadata.To_include == 1 & strcmp(metadata.Location, 'ALM'), :);
 
 % Preprocess metadata session naming format: 'TD13d_2024_11_10_P1'
 valid_session_names = strcat(valid_sessions.Animal, "_", ...
