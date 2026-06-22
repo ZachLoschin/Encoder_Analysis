@@ -3,9 +3,13 @@ Data/
 Preprocessed_Encoder/
 Processed_Encoder/
 Results**
+TDsa11/
+TD10sa/
+Fixed_Probe_Results/
 
 **.csv
 **.fig
+
 # Ignore Economo Lab Preprocessing files
 Economo-Lab-Preprocessing/
 
