@@ -53,6 +53,7 @@ params.condition(end+1) = {'hit==1' };    % left to right         % right hits, 
 params.tmin = -2;
 params.tmax = 5;
 params.dt = 1/100;
+SR = 1/params.dt;
 pre_gc_points = -params.tmin / params.dt;
 
 % smooth with causal gaussian kernel
@@ -184,8 +185,8 @@ R1_Contacts = all_contacts(R1_Trials);  % these contacts are relative to the gc
 R4_Contacts = all_contacts(R4_Trials);  % these contacts are relative to the gc
 
 %% Find trial FCs, Last Relevant Contacts (LRCs), and Trials2Remove
-[trials2removeR1, FCs_R1_clean, SCs_R1_clean, Fourth_C_R1_clean, LRCs_R1_clean] = filter_trials_by_licking(R1_Contacts, min_licks=3);
-[trials2removeR4, FCs_R4_clean, SCs_R4_clean, Fourth_C_R4_clean, LRCs_R4_clean] = filter_trials_by_licking(R4_Contacts, min_licks=5);
+[trials2removeR1, FCs_R1_clean, SCs_R1_clean, Fourth_C_R1_clean, Sixth_C_R1, LRCs_R1_clean] = filter_trials_by_licking(R1_Contacts, SR, min_licks=3);
+[trials2removeR4, FCs_R4_clean, SCs_R4_clean, Fourth_C_R4_clean, Sixth_C_R4, LRCs_R4_clean] = filter_trials_by_licking(R4_Contacts, SR, min_licks=5);
 
 % This trials2remove are indices into R1 and R4_Contacts, not trial numbers
 
@@ -246,6 +247,9 @@ R4_Keypoints_Cut = chop_and_stack_neural_data(R4K_final, LRCs_R4_clean, 100);
 %% -- Get Region Specific Neural Data and Filter It-- %%
 % Tudor code for separating probe 1 and 2
 Ncells = size(obj.psth, 2);
+
+% probe1 = 1:numel(params.cluid);
+
 probe1 = 1:numel(params.cluid{1, 1});
 probe2 = size(params.cluid{1, 1},1)+1:Ncells;
 
@@ -305,6 +309,14 @@ probe2_PCA = reshape(permute(probe2, [1, 3, 2]), [], size(probe2, 2));
 P1_PCA = (probe1_PCA - mean(probe1_PCA)) ./ std(probe1_PCA);
 P2_PCA = (probe2_PCA - mean(probe2_PCA)) ./ std(probe2_PCA);
 
+% Mean-subtract only
+P1_PCA_cov = probe1_PCA - mean(probe1_PCA);
+[coeff1_cov, score1_cov, ~, ~, explained1_cov] = pca(P1_PCA_cov);
+
+% Mean-subtract only
+P2_PCA_cov = probe2_PCA - mean(probe2_PCA);
+[coeff2_cov, score2_cov, ~, ~, explained2_cov] = pca(P2_PCA_cov);
+
 % PCA on probe1
 num_PCs = 10;
 [coeff1, score1, latent1, tsquared1, explained1, mu1] = pca(P1_PCA);
@@ -312,6 +324,8 @@ score1 = score1(:, 1:num_PCs);
 score1_reshaped = reshape(score1, num_timepoints1, num_trials1, num_PCs);
 
 % PCA on probe2
+% a = input("LIMITED PCS FOR SPECIFIC 13D SESSION");
+num_PCs = 10;
 [coeff2, score2, latent2, tsquared2, explained2, mu2] = pca(P2_PCA);
 score2 = score2(:, 1:num_PCs);
 score2_reshaped = reshape(score2, num_timepoints2, num_trials2, num_PCs);
@@ -339,6 +353,60 @@ Probe2_PCs_R4_Cut = chop_and_stack_neural_data(permute(Probe2_PCs_R4, [1, 3, 2])
 Probe1_PCs_R1_Cut = chop_and_stack_neural_data(permute(Probe1_PCs_R1, [1, 3, 2]), LRCs_R1_clean, 100);
 Probe2_PCs_R1_Cut = chop_and_stack_neural_data(permute(Probe2_PCs_R1, [1, 3, 2]), LRCs_R1_clean, 100);
 
+%% PLOTS
+R1_color       = [0 0 1];
+R4_color       = [0 0.76 1];
+alpha_sess     = 0.5;
+alpha_mean     = 1.0;
+maxPostVisible = 150;
+
+
+% ── Cumulative variance: z-scored vs mean-subtracted ─────────────────────────
+figure; tiledlayout(1, 2, 'TileSpacing', 'compact', 'Padding', 'compact');
+
+nexttile; hold on;
+plot(cumsum(explained1(1:15)), 'o-', 'Color', [R1_color, alpha_mean], 'LineWidth', 2, ...
+    'MarkerFaceColor', R1_color);
+yline(90, '--k', 'LineWidth', 1);
+xlabel('PC');
+ylabel('Cumulative Variance Explained (%)');
+title('Probe 1 (z-scored)', 'Interpreter', 'none');
+xticks(1:15); ylim([0 100]);
+grid on; box off;
+
+nexttile; hold on;
+plot(cumsum(explained1_cov(1:15)), 'o-', 'Color', [R1_color, alpha_mean], 'LineWidth', 2, ...
+    'MarkerFaceColor', R1_color);
+yline(90, '--k', 'LineWidth', 1);
+xlabel('PC');
+ylabel('Cumulative Variance Explained (%)');
+title('Probe 1 (mean-subtracted)', 'Interpreter', 'none');
+xticks(1:15); ylim([0 100]);
+grid on; box off;
+
+% ── Trial-averaged PCs ───────────────────────────────────────────────────────
+num_plot_PCs = 5;
+t = linspace(-1, 5, size(Probe1_PCs_R1, 1));
+
+P1_R1_avg = squeeze(mean(Probe1_PCs_R1, 2));
+P1_R4_avg = squeeze(mean(Probe1_PCs_R4, 2));
+
+figure; tiledlayout(num_plot_PCs, 1, 'TileSpacing', 'compact', 'Padding', 'compact');
+
+for pc = 1:num_plot_PCs
+    nexttile; hold on;
+    hR1 = plot(t, P1_R1_avg(:, pc), 'LineWidth', 4, 'Color', [R1_color, alpha_mean]);
+    hR4 = plot(t, P1_R4_avg(:, pc), 'LineWidth', 4, 'Color', [R4_color, alpha_mean]);
+    xline(0, '--k', 'LineWidth', 1);
+    ylabel(sprintf('PC %d', pc));
+    if pc == 1
+        title('Probe 1 Trial-Averaged PCs', 'Interpreter', 'none');
+        legend([hR1, hR4], {'R1', 'R4'}, 'Location', 'best', 'Interpreter', 'none');
+    end
+    if pc == num_plot_PCs, xlabel('Time from first port contact (s)'); end
+    xlim([-0.5, 2]);
+    grid on; box off;
+end
 %% Get the tongue length, FLCs, and LRCs times to save
 SR = 100;
 % Filter Tongue Length
@@ -426,11 +494,11 @@ sessionDate = meta.date;
 
 if hostname == "DESKTOP-5JJC0TM"
     outputFolder = fullfile(...
-        'C:\Users\zlosc\Documents\GitHub\Encoder_Analysis\Preprocessed_Encoder\R14', ...
+        'C:\Users\zlosc\Documents\GitHub\Encoder_Analysis\Preprocessed_Encoder\R14_2026', ...
         [sessionName '_' sessionDate ]);
 else
     outputFolder = fullfile( ...
-        'C:\Research\Encoder_Modeling\Encoder_Analysis\Processed_Encoder\R14', ...
+        'C:\Research\Encoder_Modeling\Encoder_Analysis\Processed_Encoder\R14_2026', ...
         [sessionName '_' sessionDate ]);
 end
 
@@ -506,6 +574,62 @@ fprintf(fid, 'Session ID: %s\n', sessionName);
 fprintf(fid, 'Session Date: %s\n', sessionDate);
 
 
+
+
+%% VIsualization
+% ── Single trial Neural PCs ───────────────────────────────────────────────────
+trial_num = 5;
+num_plot_PCs = 5;
+t = linspace(-1, 5, size(Probe1_PCs_R1, 1));
+
+figure; tiledlayout(num_plot_PCs, 1, 'TileSpacing', 'compact', 'Padding', 'compact');
+
+for pc = 1:num_plot_PCs
+    nexttile; hold on;
+    plot(t, Probe1_PCs_R1(:, trial_num, pc), 'LineWidth', 2, 'Color', [R1_color, alpha_mean]);
+    xline(0, '--k', 'LineWidth', 1);
+    ylabel(sprintf('PC %d', pc));
+    if pc == 1
+        title(sprintf('Trial %d — Probe 1 PCs', trial_num), 'Interpreter', 'none');
+    end
+    if pc == num_plot_PCs, xlabel('Time from first port contact (s)'); end
+    xlim([-0.5, 2]);
+    grid on; box off;
+end
+
+
+%%
+% ── Reshape keypoints into trials ─────────────────────────────────────────────
+num_timepoints = 600;
+num_trials_R1 = size(R1_Keypoints_Uncut, 1) / num_timepoints;
+num_trials_R4 = size(R4_Keypoints_Uncut, 1) / num_timepoints;
+
+R1_Keypoints_reshaped = reshape(R1_Keypoints_Uncut, num_timepoints, num_trials_R1, 26);
+R4_Keypoints_reshaped = reshape(R4_Keypoints_Uncut, num_timepoints, num_trials_R4, 26);
+
+% ── Select keypoint indices and trial to plot ─────────────────────────────────
+trial_num = 5;
+feat_idx  = [1, 4, 6];
+
+t = linspace(-1, 5, num_timepoints);
+num_plot_feats = numel(feat_idx);
+
+figure; tiledlayout(num_plot_feats, 1, 'TileSpacing', 'compact', 'Padding', 'compact');
+
+for i = 1:num_plot_feats
+    f = feat_idx(i);
+    nexttile; hold on;
+    plot(t, R1_Keypoints_reshaped(:, trial_num, f), 'LineWidth', 2, 'Color', [R1_color, alpha_mean]);
+    xline(0, '--k', 'LineWidth', 1);
+    ylabel(sprintf('Feat %d', f));
+    if i == 1
+        title(sprintf('Trial %d — Keypoint Features', trial_num), 'Interpreter', 'none');
+    end
+    if i == num_plot_feats, xlabel('Time from first port contact (s)'); end
+    xlim([-0.5, 2.0]);
+    grid on; box off;
+end
+
 %% Function to normalize trials across all k
 function normalized_data = normalize_trials(data, method)
     % Replace NaNs with zeros
@@ -554,3 +678,5 @@ function normalized = zscore_trials(data, means, stds)
     sz = size(data);
     normalized = (data - reshape(means, 1, [], 1)) ./ reshape(stds, 1, [], 1);
 end
+
+

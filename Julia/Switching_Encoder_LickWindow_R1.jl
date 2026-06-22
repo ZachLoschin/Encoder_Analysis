@@ -23,11 +23,11 @@ Random.seed!(1234);
 
 const SSD = StateSpaceDynamics
 
-base_path = "C:\\Research\\Encoder_Modeling\\Encoder_Analysis\\Processed_Encoder\\R1\\"
+base_path = "C:\\Research\\Encoder_Modeling\\Encoder_Analysis\\Processed_Encoder\\r1_sep\\"
 session_folders = filter(isdir, glob("*", base_path))
 
 for session_path in session_folders
-    try
+    # try
         session = splitpath(session_path)[end]
         session_save = replace(session, "-" => "_")
         println("sessin save: ", session_save)
@@ -62,10 +62,11 @@ for session_path in session_folders
         # 1:17, 20:24
         # Drop certain features if necessary
 
-        KP_R4 = [dropdims(el[:, vcat(1:17, 20:24), :]; dims=3) for el in KP_R4]
-        KP_R1 = [dropdims(el[:, vcat(1:17, 20:24), :]; dims=3) for el in KP_R1]
-        KP_R4_Cut = [dropdims(el[:, vcat(1:17, 20:24), :]; dims=3) for el in KP_R4_Cut]
-        KP_R1_Cut = [dropdims(el[:, vcat(1:17, 20:24), :]; dims=3) for el in KP_R1_Cut]
+        # 1:12 is only the bottom view.
+        KP_R4 = [dropdims(el[:, 1:12, :]; dims=3) for el in KP_R4]
+        KP_R1 = [dropdims(el[:, 1:12, :]; dims=3) for el in KP_R1]
+        KP_R4_Cut = [dropdims(el[:, 1:12, :]; dims=3) for el in KP_R4_Cut]
+        KP_R1_Cut = [dropdims(el[:, 1:12, :]; dims=3) for el in KP_R1_Cut]
 
         # Assuming KP_R1 is a vector of matrices
         for i in 1:length(KP_R1)
@@ -124,15 +125,15 @@ for session_path in session_folders
         # X_diseng = [X_R1_kernel[i][LRCs_R1[i]-7:(LRCs_R1[i]), :] for i in eachindex(X_R1_kernel)]
         # Y_diseng = [Y_R1_trimmed[i][LRCs_R1[i]-7:(LRCs_R1[i]), :]  for i in eachindex(Y_R1_trimmed)]
 
-        X_diseng = [X_R1_kernel[i][end-7:(end), :] for i in eachindex(X_R1_kernel)]
-        Y_diseng = [Y_R1_trimmed[i][end-7:(end), :]  for i in eachindex(Y_R1_trimmed)]
+        # X_diseng = [X_R1_kernel[i][end-7:(end), :] for i in eachindex(X_R1_kernel)]
+        # Y_diseng = [Y_R1_trimmed[i][end-7:(end), :]  for i in eachindex(Y_R1_trimmed)]
 
-        println("loop fin")
-        X_diseng = vcat(X_diseng...)
-        Y_diseng = vcat(Y_diseng...)
+        # println("loop fin")
+        # X_diseng = vcat(X_diseng...)
+        # Y_diseng = vcat(Y_diseng...)
 
-        println("fitting")
-        β_diseng, Σ_diseng = weighted_ridge_regression(X_diseng, Y_diseng, 0.01)
+        # println("fitting")
+        # β_diseng, Σ_diseng = weighted_ridge_regression(X_diseng, Y_diseng, 0.01)
 
 
 
@@ -161,8 +162,8 @@ for session_path in session_folders
         model.B[1].β = β_eng
         model.B[1].Σ = Σ_eng
 
-        model.B[2].β = β_diseng
-        model.B[2].Σ = Σ_diseng
+        # model.B[2].β = β_diseng
+        # model.B[2].Σ = Σ_diseng
 
         model.A = [0.9999 0.0001; 0.0001 0.9999]
         model.πₖ = [0.0001; 0.9999]
@@ -266,11 +267,11 @@ for session_path in session_folders
         VITERBI STATES SAVED
         """
 
-        if !isdir(joinpath("Results_Window_R1_DisInit\\" *session_save))
-            mkpath(joinpath("Results_Window_R1_DisInit\\" *session_save))
+        if !isdir(joinpath("Results_Window_R1_Aug\\" *session_save))
+            mkpath(joinpath("Results_Window_R1_Aug\\" *session_save))
         end
 
-        println("SAVE PATH", (joinpath("Results_Window_R1_DisInit\\" *session_save, "R14_PC_R2_Reg.csv")))
+        println("SAVE PATH", (joinpath("Results_Window_R1_Aug\\" *session_save, "R14_PC__9si_10si_R2_Reg.csv")))
 
         R1_States_Vit_df = DataFrame(R1_Vit, :auto)
         R1_States_df = DataFrame(R1_States, :auto)
@@ -280,29 +281,29 @@ for session_path in session_folders
         mean_r2_df = DataFrame(mean_r2_per_pc', :auto)  # make it a 1×12 DataFrame
 
         # Save
-        CSV.write(joinpath("Results_Window_R1_DisInit\\" *session_save, "R1_PC_R2_Reg.csv"), mean_r2_df; header=false)
-        CSV.write(joinpath("Results_Window_R1_DisInit\\" *session_save, "R1_Tongue_Reg.csv"), R1_Tongue_df; header=false)
-        CSV.write(joinpath("Results_Window_R1_DisInit\\" *session_save, "R1_States_Reg.csv"), R1_States_df; header=false)
-        CSV.write(joinpath("Results_Window_R1_DisInit\\" *session_save, "R1_States_Vit_Reg.csv"), R1_States_Vit_df; header=false)
+        CSV.write(joinpath("Results_Window_R1_Aug\\" *session_save, "R1_PC_R2_Reg.csv"), mean_r2_df; header=false)
+        CSV.write(joinpath("Results_Window_R1_Aug\\" *session_save, "R1_Tongue_Reg.csv"), R1_Tongue_df; header=false)
+        CSV.write(joinpath("Results_Window_R1_Aug\\" *session_save, "R1_States_Reg.csv"), R1_States_df; header=false)
+        CSV.write(joinpath("Results_Window_R1_Aug\\" *session_save, "R1_States_Vit_Reg.csv"), R1_States_Vit_df; header=false)
 
         println("SESSION DATA SAVED")
 
 
-    catch err
-        # Prepare error message as a string
-        error_msg = IOBuffer()
-        println(error_msg, "Error: ", err)
-        println(error_msg, "Stacktrace:")
-        for frame in stacktrace(catch_backtrace())
-            println(error_msg, frame)
-        end
+    # catch err
+    #     # Prepare error message as a string
+    #     error_msg = IOBuffer()
+    #     println(error_msg, "Error: ", err)
+    #     println(error_msg, "Stacktrace:")
+    #     for frame in stacktrace(catch_backtrace())
+    #         println(error_msg, frame)
+    #     end
 
-        # # Save to file
-        # error_file = joinpath("Results_Window", session_save, "KP2PC", "error_log.txt")
-        # open(error_file, "w") do f
-        #     write(f, String(take!(error_msg)))
-        # end
-    end
+    #     # # Save to file
+    #     # error_file = joinpath("Results_Window", session_save, "KP2PC", "error_log.txt")
+    #     # open(error_file, "w") do f
+    #     #     write(f, String(take!(error_msg)))
+    #     # end
+    # end
 end
 
 

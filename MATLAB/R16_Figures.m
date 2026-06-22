@@ -13,7 +13,7 @@ close all
 %% Import the state inference and tongue data
 
 %% Import the state inference and tongue data
-base_dir = 'C:\Research\Encoder_Modeling\Encoder_Analysis\Results_Window_R16_NoInit';
+base_dir = 'C:\Research\Encoder_Modeling\Encoder_Analysis\Results_Window_R16';
 alt_base_dir = 'C:\Research\Encoder_Modeling\Encoder_Analysis\Processed_Encoder\R16';
 subfolder = '';
 
@@ -23,15 +23,16 @@ session_dirs = session_dirs([session_dirs.isdir]);  % Keep only directories
 session_dirs = session_dirs(~ismember({session_dirs.name}, {'.', '..'}));  % Remove . and ..
 
 for ij = 1:length(session_dirs)
+    close all;
     session_name = session_dirs(ij).name;
     save_dir = fullfile(base_dir, session_name, subfolder);
 
     % Load files
     R1_States   = readmatrix(fullfile(save_dir, 'R1_States_Reg.csv'));
-    R4_States   = readmatrix(fullfile(save_dir, 'R14_States_Reg.csv'));
+    R4_States   = readmatrix(fullfile(save_dir, 'R16_States_Reg.csv'));
     R1_Tongue   = readmatrix(fullfile(save_dir, 'R1_Tongue_Reg.csv'));
-    R4_Tongue   = readmatrix(fullfile(save_dir, 'R14_Tongue_Reg.csv'));
-    PC          = readmatrix(fullfile(save_dir, 'R14_PC_R2_Reg.csv'));
+    R4_Tongue   = readmatrix(fullfile(save_dir, 'R16_Tongue_Reg.csv'));
+    PC          = readmatrix(fullfile(save_dir, 'R16_PC_R2_Reg.csv'));
 
     % close all
     % R1_Tongue = R1_Tongue';

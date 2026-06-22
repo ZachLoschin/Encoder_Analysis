@@ -1218,20 +1218,14 @@ function compute_param_diffs(Σ_storage, π_storage, A_storage, β_storage)
     return sigma_changes, pi_changes, A_changes, overall_changes, β_changes
 end
 
-
-function load_data_encoder_noSVD(path, condition)
+function load_data_encoder_noSVD(path, condition, probenum, chunk_size)
     # Helper function to chunk matrix into 600-timepoint segments
     function chunk_matrix(mat, chunk_size)
         num_chunks = size(mat, 1) ÷ chunk_size
         [mat[(i-1)*chunk_size + 1 : i*chunk_size, :] for i in 1:num_chunks]
     end
 
-    # Construct file paths
-    probe1_path = path * "Probe1_" * condition * "_Uncut.csv"
-    probe2_path = path * "Probe2_" * condition * "_Uncut.csv"
-
-    PCA_P1_path = path * "PCA_Probe1_" * condition * "_Uncut.csv"
-    PCA_P2_path = path * "PCA_Probe2_" * condition * "_Uncut.csv"
+    PCA_P1_path = path * "PCA_Probe" * string(probenum) * "_" * condition * "_Uncut.csv"
 
     KP_path = path * "Keypoint_Feats_" * condition * "_Uncut.csv"
 
@@ -1239,33 +1233,63 @@ function load_data_encoder_noSVD(path, condition)
 
 
     # Load the data into matrices
-    probe1_mat = Matrix(CSV.read(probe1_path, DataFrame; header=false))
-    probe2_mat = Matrix(CSV.read(probe2_path, DataFrame; header=false))
-
     PCA_P1_mat = Matrix(CSV.read(PCA_P1_path, DataFrame; header=false))
-    PCA_P2_mat = Matrix(CSV.read(PCA_P2_path, DataFrame; header=false))
-
     KP_mat = Matrix(CSV.read(KP_path, DataFrame; header=false))
-
     Jaw_mat = Matrix(CSV.read(JawFeats_path, DataFrame; header=false))
-    
-
-    # Chunk size
-    chunk_size = 600
 
     # Chunk all matrices
-    probe1_chunks = chunk_matrix(probe1_mat, chunk_size)
-    probe2_chunks = chunk_matrix(probe2_mat, chunk_size)
-
     PCA_P1_chunks = chunk_matrix(PCA_P1_mat, chunk_size)
-    PCA_P2_chunks = chunk_matrix(PCA_P2_mat, chunk_size)
-
     KP_chunks = chunk_matrix(KP_mat, chunk_size)
-
     Jaw_chunks = chunk_matrix(Jaw_mat, chunk_size)
 
-    return probe1_chunks, probe2_chunks, PCA_P1_chunks, PCA_P2_chunks, KP_chunks, Jaw_chunks
+    return PCA_P1_chunks, KP_chunks, Jaw_chunks
 end
+
+
+
+# function load_data_encoder_noSVD(path, condition, chunk_size)
+#     # Helper function to chunk matrix into 600-timepoint segments
+#     function chunk_matrix(mat, chunk_size)
+#         num_chunks = size(mat, 1) ÷ chunk_size
+#         [mat[(i-1)*chunk_size + 1 : i*chunk_size, :] for i in 1:num_chunks]
+#     end
+
+#     # Construct file paths
+#     probe1_path = path * "Probe1_" * condition * "_Uncut.csv"
+#     probe2_path = path * "Probe1_" * condition * "_Uncut.csv"
+
+#     PCA_P1_path = path * "PCA_Probe1_" * condition * "_Uncut.csv"
+#     PCA_P2_path = path * "PCA_Probe1_" * condition * "_Uncut.csv"
+
+#     KP_path = path * "Keypoint_Feats_" * condition * "_Uncut.csv"
+
+#     JawFeats_path = path * "JawFeats_" * condition * "_Uncut.csv"
+
+
+#     # Load the data into matrices
+#     probe1_mat = Matrix(CSV.read(probe1_path, DataFrame; header=false))
+#     probe2_mat = Matrix(CSV.read(probe2_path, DataFrame; header=false))
+
+#     PCA_P1_mat = Matrix(CSV.read(PCA_P1_path, DataFrame; header=false))
+#     PCA_P2_mat = Matrix(CSV.read(PCA_P2_path, DataFrame; header=false))
+
+#     KP_mat = Matrix(CSV.read(KP_path, DataFrame; header=false))
+
+#     Jaw_mat = Matrix(CSV.read(JawFeats_path, DataFrame; header=false))
+
+#     # Chunk all matrices
+#     probe1_chunks = chunk_matrix(probe1_mat, chunk_size)
+#     probe2_chunks = chunk_matrix(probe2_mat, chunk_size)
+
+#     PCA_P1_chunks = chunk_matrix(PCA_P1_mat, chunk_size)
+#     PCA_P2_chunks = chunk_matrix(PCA_P2_mat, chunk_size)
+
+#     KP_chunks = chunk_matrix(KP_mat, chunk_size)
+
+#     Jaw_chunks = chunk_matrix(Jaw_mat, chunk_size)
+
+#     return probe1_chunks, probe2_chunks, PCA_P1_chunks, PCA_P2_chunks, KP_chunks, Jaw_chunks
+# end
 
 
 
@@ -1330,33 +1354,25 @@ function load_data_encoder(path, condition)
     return probe1_chunks, probe2_chunks, PCA_P1_chunks, PCA_P2_chunks, SVD_chunks, KP_chunks, Jaw_chunks, SC_P1_chunks, SC_P2_chunks
 end
 
-function load_data_encoder_cut_noSVD(path, condition)
+
+function load_data_encoder_cut_noSVD(path, condition, probe_num)
     # Construct file paths
-    probe1_path = path * "Probe1_" * condition * "_Cut.csv"
-    probe2_path = path * "Probe2_" * condition * "_Cut.csv"
-    PCA_P1_path = path * "PCA_Probe1_" * condition * "_Cut.csv"
-    PCA_P2_path = path * "PCA_Probe2_" * condition * "_Cut.csv"
+
+    PCA_P1_path = path * "PCA_Probe" * string(probe_num) * "_" * condition * "_Cut.csv"
     KP_path = path * "Keypoint_Feats_" * condition * "_Cut.csv"
     FCs_path = path * "FCs_" * condition * ".csv"
-    SCs_path = path * "SCs_" * condition * ".csv"
     LRCs_path = path * "LRCs_" * condition * ".csv"
     Tongue_path = path * "Tongue_" * condition * ".csv"
     JawFeats_path = path * "JawFeats_" * condition * "_Cut.csv"
 
 
     # Load the data into matrices
-    probe1_mat = Matrix(CSV.read(probe1_path, DataFrame; header=false))
-    probe2_mat = Matrix(CSV.read(probe2_path, DataFrame; header=false))
     PCA_P1_mat = Matrix(CSV.read(PCA_P1_path, DataFrame; header=false))
-    PCA_P2_mat = Matrix(CSV.read(PCA_P2_path, DataFrame; header=false))
     KP_mat = Matrix(CSV.read(KP_path, DataFrame; header=false))
     FCs_mat = Matrix(CSV.read(FCs_path, DataFrame; header=false))
-    SCs_mat = Matrix(CSV.read(SCs_path, DataFrame; header=false))
     LRCs = vec(Matrix(CSV.read(LRCs_path, DataFrame; header=false)))  # 1D vector of rounded trial lengths
     Tongue_mat = Matrix(CSV.read(Tongue_path, DataFrame; header=false))
     Jaw_mat = Matrix(CSV.read(JawFeats_path, DataFrame; header=false))
-
-
 
     # Chunking function
     function chunk_matrix(mat, lengths)
@@ -1370,17 +1386,67 @@ function load_data_encoder_cut_noSVD(path, condition)
         return chunks
     end
 
-    # Chunk all data at 100Hz
-    probe1_chunks = chunk_matrix(probe1_mat, LRCs)
-    probe2_chunks = chunk_matrix(probe2_mat, LRCs)
+    # Chunk all data at SR Hz
     PCA_P1_chunks = chunk_matrix(PCA_P1_mat, LRCs)
-    PCA_P2_chunks = chunk_matrix(PCA_P2_mat, LRCs)
     KP_chunks = chunk_matrix(KP_mat, LRCs)
     Jaw_chunks = chunk_matrix(Jaw_mat, LRCs)
 
 
-    return probe1_chunks, probe2_chunks, PCA_P1_chunks, PCA_P2_chunks, KP_chunks, FCs_mat, SCs_mat, LRCs, Tongue_mat, Jaw_chunks
+    return PCA_P1_chunks, KP_chunks, FCs_mat, LRCs, Tongue_mat, Jaw_chunks
 end
+
+
+# function load_data_encoder_cut_noSVD(path, condition)
+#     # Construct file paths
+#     probe1_path = path * "Probe1_" * condition * "_Cut.csv"
+#     probe2_path = path * "Probe2_" * condition * "_Cut.csv"
+#     PCA_P1_path = path * "PCA_Probe1_" * condition * "_Cut.csv"
+#     PCA_P2_path = path * "PCA_Probe2_" * condition * "_Cut.csv"
+#     KP_path = path * "Keypoint_Feats_" * condition * "_Cut.csv"
+#     FCs_path = path * "FCs_" * condition * ".csv"
+#     SCs_path = path * "SCs_" * condition * ".csv"
+#     LRCs_path = path * "LRCs_" * condition * ".csv"
+#     Tongue_path = path * "Tongue_" * condition * ".csv"
+#     JawFeats_path = path * "JawFeats_" * condition * "_Cut.csv"
+
+
+#     # Load the data into matrices
+#     probe1_mat = Matrix(CSV.read(probe1_path, DataFrame; header=false))
+#     probe2_mat = Matrix(CSV.read(probe2_path, DataFrame; header=false))
+#     PCA_P1_mat = Matrix(CSV.read(PCA_P1_path, DataFrame; header=false))
+#     PCA_P2_mat = Matrix(CSV.read(PCA_P2_path, DataFrame; header=false))
+#     KP_mat = Matrix(CSV.read(KP_path, DataFrame; header=false))
+#     FCs_mat = Matrix(CSV.read(FCs_path, DataFrame; header=false))
+#     SCs_mat = Matrix(CSV.read(SCs_path, DataFrame; header=false))
+#     LRCs = vec(Matrix(CSV.read(LRCs_path, DataFrame; header=false)))  # 1D vector of rounded trial lengths
+#     Tongue_mat = Matrix(CSV.read(Tongue_path, DataFrame; header=false))
+#     Jaw_mat = Matrix(CSV.read(JawFeats_path, DataFrame; header=false))
+
+
+
+#     # Chunking function
+#     function chunk_matrix(mat, lengths)
+#         chunks = Vector{Matrix{Float64}}()
+#         start_idx = 1
+#         for len in lengths
+#             stop_idx = start_idx + len - 1
+#             push!(chunks, mat[start_idx:stop_idx, :])
+#             start_idx = stop_idx + 1
+#         end
+#         return chunks
+#     end
+
+#     # Chunk all data at SR Hz
+#     probe1_chunks = chunk_matrix(probe1_mat, LRCs)
+#     probe2_chunks = chunk_matrix(probe2_mat, LRCs)
+#     PCA_P1_chunks = chunk_matrix(PCA_P1_mat, LRCs)
+#     PCA_P2_chunks = chunk_matrix(PCA_P2_mat, LRCs)
+#     KP_chunks = chunk_matrix(KP_mat, LRCs)
+#     Jaw_chunks = chunk_matrix(Jaw_mat, LRCs)
+
+
+#     return probe1_chunks, probe2_chunks, PCA_P1_chunks, PCA_P2_chunks, KP_chunks, FCs_mat, SCs_mat, LRCs, Tongue_mat, Jaw_chunks
+# end
 
 function load_data_encoder_cut(path, condition)
     # Construct file paths

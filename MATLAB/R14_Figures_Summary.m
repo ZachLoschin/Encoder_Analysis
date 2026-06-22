@@ -11,8 +11,8 @@ clear;
 clc;
 close all
 %% Import the state inference and tongue data
-base_dir = 'C:\Research\Encoder_Modeling\Encoder_Analysis\Results_Window_R14';
-summary_dir = 'C:\Research\Encoder_Modeling\Encoder_Analysis\Results_Window_R14\Summary_Figs_ALM';
+base_dir = 'C:\Research\Encoder_Modeling\Encoder_Analysis\Results_Window_R14_Aug';
+summary_dir = 'C:\Research\Encoder_Modeling\Encoder_Analysis\Results_Window_R14_Aug\Summary_Figs_R14_M1ALM';
 alt_base_dir = 'C:\Research\Encoder_Modeling\Encoder_Analysis\Processed_Encoder\R14';
 subfolder = '';
 
@@ -20,7 +20,7 @@ subfolder = '';
 metadata = readtable('R14_Session_Metadata.xlsx');  % Your Excel saved as CSV
 
 %% Filter the metadata for sessions to include
-valid_sessions = metadata(metadata.To_include == 1 & strcmp(metadata.Location, 'ALM'), :);
+valid_sessions = metadata(metadata.To_include == 1 & strcmp(metadata.Location, 'M1ALM'), :);
 
 % Preprocess metadata session naming format: 'TD13d_2024_11_10_P1'
 valid_session_names = strcat(valid_sessions.Animal, "_", ...
@@ -35,6 +35,8 @@ session_dirs = session_dirs(~ismember({session_dirs.name}, {'.', '..'}));  % Rem
 % Initialize storage for each session's data
 R1_INF_MEAN = {};
 R4_INF_MEAN = {};
+R1_INF_MEAN_FC = {};
+R4_INF_MEAN_FC = {};
 R1_D_HM = [];
 R4_D_HM = [];
 
@@ -142,7 +144,75 @@ for ij = 1:length(session_dirs)
 
 
         x = 1:length(R1_Inf_Mean);
+
+        %% Aligned to FC
+        FCs_R1 = readmatrix(fullfile(alt_session_dir, 'FCs_R1.csv')) - 100;
+        FCs_R4 = readmatrix(fullfile(alt_session_dir, 'FCs_R4.csv'))- 100;
         
+        % Parameters
+        window_size = 211;
+        pre_points = 10;
+        post_points = 200;
+        
+        % ---- R1 ----
+        n_trials = size(R1_States, 2);
+        R1_FC_aligned = nan(window_size, n_trials);
+        
+        for i = 1:n_trials
+            align_point = round(FCs_R1(i));
+            start_idx = align_point - pre_points;
+            end_idx = align_point + post_points;
+        
+            % Determine valid indices
+            valid_start = max(start_idx, 1);
+            valid_end = min(end_idx, size(R1_States, 1));
+        
+            % Corresponding indices in the aligned window
+            insert_start = valid_start - start_idx + 1;
+            insert_end = insert_start + (valid_end - valid_start);
+        
+            % Fill with actual data
+            R1_FC_aligned(insert_start:insert_end, i) = R1_States(valid_start:valid_end, i);
+        end
+        
+        % ---- R4 ----
+        n_trials = size(R4_States, 2);
+        R4_FC_aligned = nan(window_size, n_trials);
+        
+        for i = 1:n_trials
+            align_point = round(FCs_R4(i));
+            start_idx = align_point - pre_points;
+            end_idx = align_point + post_points;
+        
+            valid_start = max(start_idx, 1);
+            valid_end = min(end_idx, size(R4_States, 1));
+        
+            insert_start = valid_start - start_idx + 1;
+            insert_end = insert_start + (valid_end - valid_start);
+        
+            R4_FC_aligned(insert_start:insert_end, i) = R4_States(valid_start:valid_end, i);
+        end
+
+        
+
+
+        % Trial averaged inference plots
+        R1_Inf_Mean = nanmean(exp(R1_FC_aligned'), 1);
+        R1_Inf_Std  = nanstd(exp(R1_FC_aligned'), 0, 1);
+        
+        R4_Inf_Mean = nanmean(exp(R4_FC_aligned'), 1);
+        R4_Inf_Std  = nanstd(exp(R4_FC_aligned'), 0, 1);
+
+        % Replace NaNs in mean and std with 0.0
+        R1_Inf_Mean(isnan(R1_Inf_Mean)) = 0.0;
+        R1_Inf_Std(isnan(R1_Inf_Std)) = 0.0;
+        
+        R4_Inf_Mean(isnan(R4_Inf_Mean)) = 0.0;
+        R4_Inf_Std(isnan(R4_Inf_Std)) = 0.0;
+
+        R1_INF_MEAN_FC{end+1} = R1_Inf_Mean;
+        R4_INF_MEAN_FC{end+1} = R4_Inf_Mean;
+
         % figure
         % hold on
         % 
@@ -554,6 +624,70 @@ legend(["R1 Std", "R4 Std", "R1 Mean", "R4 Mean"]);
 saveas(gcf, fullfile(summary_dir, 'Ave_Inference.png'));
 saveas(gcf, fullfile(summary_dir, 'Ave_Inference.fig'));
 
+
+%% Trial averaged inference aligned to FC
+
+% Stack into matrices: [num_sessions x timepoints]
+R1_all = cat(1, R1_INF_MEAN_FC{:});  % [num_sessions x T]
+R4_all = cat(1, R4_INF_MEAN_FC{:});
+
+% Compute mean and std across sessions
+R1_Inf_Mean = nanmean(R1_all, 1);  % [1 x T]
+R1_Inf_Std  = nanstd(R1_all, 0, 1);
+
+R4_Inf_Mean = nanmean(R4_all, 1);
+R4_Inf_Std  = nanstd(R4_all, 0, 1);
+
+x = 1:length(R1_Inf_Mean);  % time axis, adapt if needed
+
+figure
+hold on
+
+% Clamp shaded areas between 0 and 1
+R1_Shade_Upper = min(R1_Inf_Mean + R1_Inf_Std, 1);
+R1_Shade_Lower = max(R1_Inf_Mean - R1_Inf_Std, 0);
+
+R4_Shade_Upper = min(R4_Inf_Mean + R4_Inf_Std, 1);
+R4_Shade_Lower = max(R4_Inf_Mean - R4_Inf_Std, 0);
+
+
+% Shaded std region for R1
+r1_s = fill([x, fliplr(x)], ...
+     [R1_Shade_Upper, fliplr(R1_Shade_Lower)], ...
+     [0.6 0.8 1], ...
+     'EdgeColor', 'none', ...
+     'FaceAlpha', 0.7);
+
+% Shaded std region for R4
+r4_s = fill([x, fliplr(x)], ...
+     [R4_Shade_Upper, fliplr(R4_Shade_Lower)], ...
+     [0.7 0.9 1], ...
+     'EdgeColor', 'none', ...
+     'FaceAlpha', 0.7);
+
+
+% Plot mean traces
+r1_p = plot(x, R1_Inf_Mean, 'b', 'LineWidth', 2);
+r4_p = plot(x, R4_Inf_Mean, 'Color', [0 0.76 1], 'LineWidth', 2);
+
+ylabel("State 1 Probability")
+xlabel("Time (s)")
+xticks([0 60 110 160 210]); % Position of ticks
+xticklabels({'-0.1', '0.5', '1.0', '1.5', '2.0'}); % Labels corresponding to time in seconds
+xlim([0, 200])
+ylim([0, 1])
+title("Trial Averaged Inference")
+
+xline(11, "--k", "LineWidth", 1)
+text(11, min([R1_Inf_Mean - R1_Inf_Std, R4_Inf_Mean - R4_Inf_Std], [], 'all') - 0.02, 'GC', ...
+    'HorizontalAlignment', 'center', ...
+    'VerticalAlignment', 'top', ...
+    'FontSize', 10);
+
+legend([r1_p, r4_p, r1_s, r4_s], {'R1 Mean', 'R4 Mean', 'R1 Std', 'R4 Std'} )
+saveas(gcf, fullfile(summary_dir, 'Ave_Inference_FCAligned.png'))
+saveas(gcf, fullfile(summary_dir, 'Ave_Inference_FCAligned.fig'))
+
 %% Session Wide Dt Histogram
 edges = 0:50:2000; % bin in 10-frame increments
 figure
@@ -587,6 +721,77 @@ title('Disengagement Time Distribution')
 saveas(gcf, fullfile(summary_dir, 'Dt_Boxplot.png'))
 saveas(gcf, fullfile(summary_dir, 'Dt_Boxplot.fig'))
 
+
+%% Plots for illustratos
+% Disengagement times in ms
+R1_ms = R1_D_HM * 10;
+R4_ms = R4_D_HM * 10;
+edges = 0:100:2000;
+xticks_ms = -250:250:2000;
+xticklabels_sec = string(xticks_ms / 1000);
+
+%% 1. R1 Boxplot
+figure;
+boxplot(R1_ms, 'Orientation', 'vertical', 'Colors', 'b', 'Symbol', '');
+ylim([-250 2000])
+yticks(xticks_ms)
+yticklabels(xticklabels_sec)
+ylabel('Disengagement Time (s)')
+title('R1 Boxplot')
+set(gca, 'XTickLabel', {})  % Hide y-axis labels for Illustrator
+saveas(gcf, fullfile(summary_dir, 'R1_Dt_Boxplot.png'))
+saveas(gcf, fullfile(summary_dir, 'R1_Dt_Boxplot.fig'))
+
+%% 2. R4 Boxplot
+figure;
+boxplot(R4_ms, 'Orientation', 'vertical', 'Colors', [0 0.76 1], 'Symbol', '');
+ylim([-250 2000])
+yticks(xticks_ms)
+yticklabels(xticklabels_sec)
+ylabel('Disengagement Time (s)')
+title('R4 Boxplot')
+set(gca, 'XTickLabel', {})
+saveas(gcf, fullfile(summary_dir, 'R4_Dt_Boxplot.png'))
+saveas(gcf, fullfile(summary_dir, 'R4_Dt_Boxplot.fig'))
+
+%% 3. R1 Histogram
+% Scale factor
+scale_factor = 1;
+
+% Histogram binning
+[counts, centers] = histcounts(R1_ms, edges);
+centers = edges(1:end-1) + diff(edges)/2;
+
+% Scale the bar heights
+scaled_counts = counts / scale_factor;
+
+% Plot using bar
+figure;
+barh(centers, scaled_counts, 1, 'FaceColor', 'b', 'FaceAlpha', 0.6)
+ylim([-250 2000])
+yticks(-250:250:2000)
+yticklabels(string((-250:250:2000)/1000))
+ylabel('Disengagement Time (s)')
+xlabel(['Scaled Trial Count (/ ' num2str(scale_factor) ')'])
+title('R1 Histogram (Scaled)')
+saveas(gcf, fullfile(summary_dir, 'R1_Dt_Histogram_Scaled.png'))
+saveas(gcf, fullfile(summary_dir, 'R1_Dt_Histogram_Scaled.fig'))
+
+%% 4. R4 Histogram
+[counts, centers] = histcounts(R4_ms, edges);
+centers = edges(1:end-1) + diff(edges)/2;
+scaled_counts = counts / scale_factor;
+
+figure;
+barh(centers, scaled_counts, 1, 'FaceColor', [0 0.76 1], 'FaceAlpha', 0.6)
+ylim([-250 2000])
+yticks(-250:250:2000)
+yticklabels(string((-250:250:2000)/1000))
+ylabel('Disengagement Time (s)')
+xlabel(['Scaled Trial Count (/ ' num2str(scale_factor) ')'])
+title('R4 Histogram (Scaled)')
+saveas(gcf, fullfile(summary_dir, 'R4_Dt_Histogram_Scaled.png'))
+saveas(gcf, fullfile(summary_dir, 'R4_Dt_Histogram_Scaled.fig'))
 
 
 

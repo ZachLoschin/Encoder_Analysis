@@ -159,8 +159,8 @@ R1_Contacts = all_contacts(R1_Trials);  % these contacts are relative to the gc
 R4_Contacts = all_contacts(R4_Trials);  % these contacts are relative to the gc
 
 %% Find trial FCs, Last Relevant Contacts (LRCs), and Trials2Remove
-[trials2removeR1, FCs_R1_clean, SCs_R1_clean, LRCs_R1_clean] = filter_trials_by_licking(R1_Contacts, min_licks=3);
-[trials2removeR4, FCs_R4_clean, SCs_R4_clean, LRCs_R4_clean] = filter_trials_by_licking(R4_Contacts, min_licks=5);
+[trials2removeR1, FCs_R1_clean, SCs_R1_clean, Fourth_C_R1_clean, Sixth_C_R1_clean, LRCs_R1_clean] = filter_trials_by_licking(R1_Contacts, min_licks=3);
+[trials2removeR4, FCs_R4_clean, SCs_R4_clean, Fourth_C_R4_clean, Sixth_C_R4_clean, LRCs_R4_clean] = filter_trials_by_licking(R4_Contacts, min_licks=5);
 
 % This trials2remove are indices into R1 and R4_Contacts, not trial numbers
 
@@ -169,10 +169,14 @@ R4_Contacts = all_contacts(R4_Trials);  % these contacts are relative to the gc
 FCs_R1_clean(trials2removeR1) = [];
 SCs_R1_clean(trials2removeR1) = [];
 LRCs_R1_clean(trials2removeR1) = [];
+Fourth_C_R1_clean(trials2removeR1) = [];
+Sixth_C_R1_clean(trials2removeR1) = [];
 
 FCs_R4_clean(trials2removeR4) = [];
 SCs_R4_clean(trials2removeR4) = [];
 LRCs_R4_clean(trials2removeR4) = [];
+Fourth_C_R4_clean(trials2removeR4) = [];
+Sixth_C_R4_clean(trials2removeR4) = [];
 
 
 %% Get the keypoints by trial
@@ -324,6 +328,12 @@ FCs_Adj_R4 = ceil(FCs_R4_clean*SR + SR);
 SCs_Adj_R1 = ceil(SCs_R1_clean*SR + SR);
 SCs_Adj_R4 = ceil(SCs_R4_clean*SR + SR);
 
+Fourth_C_Adj_R1 = ceil(Fourth_C_R1_clean*SR + SR);
+Fourth_C_Adj_R4 = ceil(Fourth_C_R4_clean*SR + SR);
+
+Sixth_C_Adj_R1 = ceil(Sixth_C_R1_clean*SR + SR);
+Sixth_C_Adj_R4 = ceil(Sixth_C_R4_clean*SR + SR);
+
 LRCs_Adj_R1 = ceil(LRCs_R1_clean*SR + SR);
 LRCs_Adj_R4 = ceil(LRCs_R4_clean*SR + SR);
 
@@ -391,7 +401,7 @@ sessionDate = meta.date;
 
 % Construct the output folder path
 outputFolder = fullfile( ...
-    'C:\Research\Encoder_Modeling\Encoder_Analysis\Processed_Encoder', ...
+    'C:\Research\Encoder_Modeling\Encoder_Analysis\Processed_Encoder\R16', ...
     [sessionName '_' sessionDate ]);
 
 % Create the output folder if it does not exist
@@ -449,6 +459,9 @@ csvwrite(fullfile(outputFolder, "SCs_R16.csv"), SCs_Adj_R4);
 
 csvwrite(fullfile(outputFolder, "LRCs_R1.csv"), LRCs_Adj_R1);
 csvwrite(fullfile(outputFolder, "LRCs_R16.csv"), LRCs_Adj_R4);
+
+csvwrite(fullfile(outputFolder, "Sixth_C_R1.csv"), Sixth_C_Adj_R1);
+csvwrite(fullfile(outputFolder, "Sixth_C_R4.csv"), Sixth_C_Adj_R4);
 
 % Save metadata as a .txt file for record-keeping
 metadataFile = fullfile(outputFolder, 'metadata.txt');
