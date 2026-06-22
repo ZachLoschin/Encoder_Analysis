@@ -99,32 +99,6 @@ function fit_custom!(
     return lls
 end
 
-# function SSD.update_transition_matrix!(
-#     model::SSD.AbstractHMM, FB_storage_vec::Vector{SSD.ForwardBackward{Float64}}
-# )
-#     # println("Custom transition matrix large sticky")
-#     println("No A prior rn")
-#     A_temp = zeros(model.K, model.K)
-
-#     for j in 1:model.K
-#         for k in 1:model.K
-#             A_temp[j, k] = exp(SSD.logsumexp(vcat([FB_trial.ξ[j, k, :] for FB_trial in FB_storage_vec]...)))
-#         end
-#     end
-
-#     for k in 1:model.K
-#         A_temp[k, k] += 0
-#     end
-
-#     # renorm
-#     for j in 1:model.K
-#         row_sum = sum(A_temp[j, :])
-#         model.A[j, :] = A_temp[j, :] ./ row_sum
-#     end
-# end
-
-
-
 function SSD.update_emissions!(model::SSD.AbstractHMM, FB_storage::SSD.ForwardBackward, data)
     # println("Using WLS")
     # update regression models
@@ -167,56 +141,6 @@ function weighted_ridge_regression(
 
     return β, Σ
 end
-
-
-# function weighted_ridge_regression(X::Matrix{Float64}, Y::Matrix{Float64}, λ::Float64; w::Vector{Float64}=ones(size(X,1)))
-#     @assert size(X, 1) == size(Y, 1) == length(w) "Number of rows in X, Y, and length of w must match"
-
-#     N, D = size(X)
-#     X_bias = hcat(ones(N), X)  # Add intercept column
-
-#     # Apply weights
-#     W = Diagonal(w)
-#     Xw = W * X_bias
-#     Yw = W * Y
-
-#     # Regularization: do not regularize the intercept term (first row/col)
-#     reg = zeros(D + 1, D + 1)
-#     reg[2:end, 2:end] .= λ
-
-#     # A = X_bias' * Xw + reg
-
-#     # REG REMOVED
-#     A = X_bias' * Xw #+ reg
-
-#     b = X_bias' * Yw
-
-#     cond_A = cond(A)
-#     # Update the WLS fit
-#     # β = (X_bias'Xw + reg) \ (X_bias'Yw)
-
-#     # REG REMOVED
-#     β = (X_bias'Xw) \ (X_bias'Yw)
-
-#     # Update the WLS variance
-#     residuals = Y - X_bias * β
-#     Σ = (residuals' * W * residuals) / size(X, 1)
-#     Σ = 0.5 * (Σ + Σ') # Ensure symmetry
-
-#     return β, Σ
-# end
-
-
-
-
-# function post_optimization!(model::GaussianRegressionEmission, opt::RegressionOptimization)
-#     residuals = opt.y - opt.X * model.β
-#     Σ = (residuals' * Diagonal(opt.w) * residuals) / size(opt.X, 1)
-#     model.Σ = 0.5 * (Σ + Σ')  # Ensure symmetry
-#     model.Σ = make_posdef!(model.Σ)
-#     return model.Σ
-# end
-
 
 function fit_and_evaluate(
     X_r1, X_r4, Y_r1, Y_r4,
@@ -1245,56 +1169,6 @@ function load_data_encoder_noSVD(path, condition, probenum, chunk_size)
     return PCA_P1_chunks, KP_chunks, Jaw_chunks
 end
 
-
-
-# function load_data_encoder_noSVD(path, condition, chunk_size)
-#     # Helper function to chunk matrix into 600-timepoint segments
-#     function chunk_matrix(mat, chunk_size)
-#         num_chunks = size(mat, 1) ÷ chunk_size
-#         [mat[(i-1)*chunk_size + 1 : i*chunk_size, :] for i in 1:num_chunks]
-#     end
-
-#     # Construct file paths
-#     probe1_path = path * "Probe1_" * condition * "_Uncut.csv"
-#     probe2_path = path * "Probe1_" * condition * "_Uncut.csv"
-
-#     PCA_P1_path = path * "PCA_Probe1_" * condition * "_Uncut.csv"
-#     PCA_P2_path = path * "PCA_Probe1_" * condition * "_Uncut.csv"
-
-#     KP_path = path * "Keypoint_Feats_" * condition * "_Uncut.csv"
-
-#     JawFeats_path = path * "JawFeats_" * condition * "_Uncut.csv"
-
-
-#     # Load the data into matrices
-#     probe1_mat = Matrix(CSV.read(probe1_path, DataFrame; header=false))
-#     probe2_mat = Matrix(CSV.read(probe2_path, DataFrame; header=false))
-
-#     PCA_P1_mat = Matrix(CSV.read(PCA_P1_path, DataFrame; header=false))
-#     PCA_P2_mat = Matrix(CSV.read(PCA_P2_path, DataFrame; header=false))
-
-#     KP_mat = Matrix(CSV.read(KP_path, DataFrame; header=false))
-
-#     Jaw_mat = Matrix(CSV.read(JawFeats_path, DataFrame; header=false))
-
-#     # Chunk all matrices
-#     probe1_chunks = chunk_matrix(probe1_mat, chunk_size)
-#     probe2_chunks = chunk_matrix(probe2_mat, chunk_size)
-
-#     PCA_P1_chunks = chunk_matrix(PCA_P1_mat, chunk_size)
-#     PCA_P2_chunks = chunk_matrix(PCA_P2_mat, chunk_size)
-
-#     KP_chunks = chunk_matrix(KP_mat, chunk_size)
-
-#     Jaw_chunks = chunk_matrix(Jaw_mat, chunk_size)
-
-#     return probe1_chunks, probe2_chunks, PCA_P1_chunks, PCA_P2_chunks, KP_chunks, Jaw_chunks
-# end
-
-
-
-
-
 function load_data_encoder(path, condition)
     # Helper function to chunk matrix into 600-timepoint segments
     function chunk_matrix(mat, chunk_size)
@@ -1394,59 +1268,6 @@ function load_data_encoder_cut_noSVD(path, condition, probe_num)
 
     return PCA_P1_chunks, KP_chunks, FCs_mat, LRCs, Tongue_mat, Jaw_chunks
 end
-
-
-# function load_data_encoder_cut_noSVD(path, condition)
-#     # Construct file paths
-#     probe1_path = path * "Probe1_" * condition * "_Cut.csv"
-#     probe2_path = path * "Probe2_" * condition * "_Cut.csv"
-#     PCA_P1_path = path * "PCA_Probe1_" * condition * "_Cut.csv"
-#     PCA_P2_path = path * "PCA_Probe2_" * condition * "_Cut.csv"
-#     KP_path = path * "Keypoint_Feats_" * condition * "_Cut.csv"
-#     FCs_path = path * "FCs_" * condition * ".csv"
-#     SCs_path = path * "SCs_" * condition * ".csv"
-#     LRCs_path = path * "LRCs_" * condition * ".csv"
-#     Tongue_path = path * "Tongue_" * condition * ".csv"
-#     JawFeats_path = path * "JawFeats_" * condition * "_Cut.csv"
-
-
-#     # Load the data into matrices
-#     probe1_mat = Matrix(CSV.read(probe1_path, DataFrame; header=false))
-#     probe2_mat = Matrix(CSV.read(probe2_path, DataFrame; header=false))
-#     PCA_P1_mat = Matrix(CSV.read(PCA_P1_path, DataFrame; header=false))
-#     PCA_P2_mat = Matrix(CSV.read(PCA_P2_path, DataFrame; header=false))
-#     KP_mat = Matrix(CSV.read(KP_path, DataFrame; header=false))
-#     FCs_mat = Matrix(CSV.read(FCs_path, DataFrame; header=false))
-#     SCs_mat = Matrix(CSV.read(SCs_path, DataFrame; header=false))
-#     LRCs = vec(Matrix(CSV.read(LRCs_path, DataFrame; header=false)))  # 1D vector of rounded trial lengths
-#     Tongue_mat = Matrix(CSV.read(Tongue_path, DataFrame; header=false))
-#     Jaw_mat = Matrix(CSV.read(JawFeats_path, DataFrame; header=false))
-
-
-
-#     # Chunking function
-#     function chunk_matrix(mat, lengths)
-#         chunks = Vector{Matrix{Float64}}()
-#         start_idx = 1
-#         for len in lengths
-#             stop_idx = start_idx + len - 1
-#             push!(chunks, mat[start_idx:stop_idx, :])
-#             start_idx = stop_idx + 1
-#         end
-#         return chunks
-#     end
-
-#     # Chunk all data at SR Hz
-#     probe1_chunks = chunk_matrix(probe1_mat, LRCs)
-#     probe2_chunks = chunk_matrix(probe2_mat, LRCs)
-#     PCA_P1_chunks = chunk_matrix(PCA_P1_mat, LRCs)
-#     PCA_P2_chunks = chunk_matrix(PCA_P2_mat, LRCs)
-#     KP_chunks = chunk_matrix(KP_mat, LRCs)
-#     Jaw_chunks = chunk_matrix(Jaw_mat, LRCs)
-
-
-#     return probe1_chunks, probe2_chunks, PCA_P1_chunks, PCA_P2_chunks, KP_chunks, FCs_mat, SCs_mat, LRCs, Tongue_mat, Jaw_chunks
-# end
 
 function load_data_encoder_cut(path, condition)
     # Construct file paths
