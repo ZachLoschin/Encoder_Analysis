@@ -23,14 +23,14 @@ include(".\\Zutils.jl")
 
 const SSD = StateSpaceDynamics
 
-base_path = "C:\\Research\\Encoder_Modeling\\Encoder_Analysis\\Processed_Encoder\\R14_AccTest\\"
+base_path = "C:\\Research\\Encoder_Modeling\\Encoder_Analysis\\Processed_Encoder\\TDsa12\\"
 session_folders = filter(isdir, glob("*", base_path))
 
 for session_path in session_folders
     # try
         session = splitpath(session_path)[end]
         session_save = replace(session, "-" => "_")
-        println("sessin save: ", session_save)
+        println("session save: ", session_save)
 
         # Automatically detect probe number from folder name
         if endswith(session, "_P3")
@@ -47,13 +47,13 @@ for session_path in session_folders
         session_path = session_path * "\\"
         println(session_path)
 
-        # SR = 1200
-        SR=600
-        PCA_P1_R1, KP_R1, Jaw_R1 = load_data_encoder_noSVD(session_path, "R1", prb, SR)  #chunk size 600 for 10ms bins, 1200 for 5ms bins
-        PCA_P1_R4, KP_R4, Jaw_R4 = load_data_encoder_noSVD(session_path, "R4", prb, SR)
+        SR = 1200
+        # SR=600
+        PCA_P1_R1, KP_R1 = load_data_encoder_noSVD(session_path, "R1", prb, SR)  #chunk size 600 for 10ms bins, 1200 for 5ms bins
+        PCA_P1_R4, KP_R4 = load_data_encoder_noSVD(session_path, "R4", prb, SR)
 
-        PCA_P1_R1_Cut, KP_R1_Cut, FCs_R1, LRCs_R1, Tongue_mat_R1, Jaw_R1_Cut = load_data_encoder_cut_noSVD(session_path, "R1", prb)
-        PCA_P1_R4_Cut, KP_R4_Cut, FCs_R4, LRCs_R4, Tongue_mat_R4, Jaw_R4_Cut = load_data_encoder_cut_noSVD(session_path, "R4", prb)
+        PCA_P1_R1_Cut, KP_R1_Cut, FCs_R1, LRCs_R1, Tongue_mat_R1 = load_data_encoder_cut_noSVD(session_path, "R1", prb)
+        PCA_P1_R4_Cut, KP_R4_Cut, FCs_R4, LRCs_R4, Tongue_mat_R4 = load_data_encoder_cut_noSVD(session_path, "R4", prb)
 
 
         println("LOADED DATA")
@@ -93,27 +93,27 @@ for session_path in session_folders
 
         println("Prefitting Encoders")
 
-        lags=4
-        leads = 0
-        start_time = 90
-        dif = 100-lags;
-        pre=3
-        post=10
-        lags = 4
-        three_sec = 300
-        two_sec = 201
+        # lags=4
+        # leads = 0
+        # start_time = 90
+        # dif = 100-lags;
+        # pre=3
+        # post=10
+        # lags = 4
+        # three_sec = 300
+        # two_sec = 201
 
 
         # for 5ms bins
-        # lags=8
-        # leads = 0
-        # start_time = 190  # This being 190 means that we only get 10 points before the GC, or 50 ms
-        # dif = 200-lags;
-        # pre=6
-        # post=20
-        # lags=8
-        # three_sec = 600
-        # two_sec = 401
+        lags=8
+        leads = 0
+        start_time = 190  # This being 190 means that we only get 10 points before the GC, or 50 ms
+        dif = 200-lags;
+        pre=6
+        post=20
+        lags=8
+        three_sec = 600
+        two_sec = 401
 
 
         # Get enough data to create kernel and start at GC still
@@ -485,43 +485,43 @@ for session_path in session_folders
         p_combined = plot(p_r2, p_nmse; layout=(1, 2), size=(1000, 420))
         display(p_combined)
 
-        if !isdir(joinpath("TDsa11", session_save))
-            mkpath(joinpath("TDsa11", session_save))
+        if !isdir(joinpath("TDsa12_ShankFiltered", session_save))
+            mkpath(joinpath("TDsa12_ShankFiltered", session_save))
         end
-        savefig(p_combined, joinpath("TDsa11", session_save, "encoding_accuracy.png"))
+        savefig(p_combined, joinpath("TDsa12_ShankFiltered", session_save, "encoding_accuracy.png"))
 
         """
         VITERBI STATES SAVED
         """
 
-        # if !isdir(joinpath("TDsa11\\" *session_save))
-        #     mkpath(joinpath("TDsa11\\" *session_save))
-        # end
+        if !isdir(joinpath("TDsa12_ShankFiltered\\" *session_save))
+            mkpath(joinpath("TDsa12_ShankFiltered\\" *session_save))
+        end
 
-        # println("**SAVE PATH**", (joinpath("TDsa11\\" *session_save, "R14_PC_R2_Reg.csv")))
+        println("**SAVE PATH**", (joinpath("TDsa12_ShankFiltered\\" *session_save, "R14_PC_R2_Reg.csv")))
 
-        # R4_States_Vit_df = DataFrame(R4_Vit, :auto)
-        # R1_States_Vit_df = DataFrame(R1_Vit, :auto)
-        # R4_States_df = DataFrame(R4_States, :auto)
-        # R1_States_df = DataFrame(R1_States, :auto)
+        R4_States_Vit_df = DataFrame(R4_Vit, :auto)
+        R1_States_Vit_df = DataFrame(R1_Vit, :auto)
+        R4_States_df = DataFrame(R4_States, :auto)
+        R1_States_df = DataFrame(R1_States, :auto)
 
-        # # Wrap vector into a DataFrame
-        # # Convert to DataFrame
-        # mean_r2_df = DataFrame(mean_r2_per_pc', :auto)  # make it a 1×12 DataFrame
+        # Wrap vector into a DataFrame
+        # Convert to DataFrame
+        mean_r2_df = DataFrame(mean_r2_per_pc', :auto)  # make it a 1×12 DataFrame
 
 
-        # CSV.write(joinpath("TDsa11\\" *session_save, "R14_PC_R2_Reg.csv"), mean_r2_df; header=false)
+        CSV.write(joinpath("TDsa12_ShankFiltered\\" *session_save, "R14_PC_R2_Reg.csv"), mean_r2_df; header=false) 
 
         
-        # # CSV.write(joinpath("TDsa11\\" *session_save, "R14_States_Reg.csv"), R4_States_df; header=false)
-        # # CSV.write(joinpath("TDsa11\\" *session_save, "R1_States_Reg.csv"), R1_States_df; header=false)
-        # # CSV.write(joinpath("TDsa11\\" *session_save, "R14_States_Vit_Reg.csv"), R4_States_Vit_df; header=false)
-        # # CSV.write(joinpath("TDsa11\\" *session_save, "R1_States_Vit_Reg.csv"), R1_States_Vit_df; header=false)
+        CSV.write(joinpath("TDsa12_ShankFiltered\\" *session_save, "R14_States_Reg.csv"), R4_States_df; header=false)
+        CSV.write(joinpath("TDsa12_ShankFiltered\\" *session_save, "R1_States_Reg.csv"), R1_States_df; header=false)
+        CSV.write(joinpath("TDsa12_ShankFiltered\\" *session_save, "R14_States_Vit_Reg.csv"), R4_States_Vit_df; header=false)
+        CSV.write(joinpath("TDsa12_ShankFiltered\\" *session_save, "R1_States_Vit_Reg.csv"), R1_States_Vit_df; header=false)
 
-        # CSV.write(joinpath("TDsa11\\" *session_save, "R14_Tongue_Reg.csv"), R4_Tongue_df; header=false)
-        # CSV.write(joinpath("TDsa11\\" *session_save, "R1_Tongue_Reg.csv"), R1_Tongue_df; header=false)
+        CSV.write(joinpath("TDsa12_ShankFiltered\\" *session_save, "R14_Tongue_Reg.csv"), R4_Tongue_df; header=false)
+        CSV.write(joinpath("TDsa12_ShankFiltered\\" *session_save, "R1_Tongue_Reg.csv"), R1_Tongue_df; header=false)
 
-        # println("SESSION DATA SAVED")
+        println("SESSION DATA SAVED")
 
 
     # catch err

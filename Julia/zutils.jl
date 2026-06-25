@@ -1153,20 +1153,20 @@ function load_data_encoder_noSVD(path, condition, probenum, chunk_size)
 
     KP_path = path * "Keypoint_Feats_" * condition * "_Uncut.csv"
 
-    JawFeats_path = path * "JawFeats_" * condition * "_Uncut.csv"
+    # JawFeats_path = path * "JawFeats_" * condition * "_Uncut.csv"
 
 
     # Load the data into matrices
     PCA_P1_mat = Matrix(CSV.read(PCA_P1_path, DataFrame; header=false))
     KP_mat = Matrix(CSV.read(KP_path, DataFrame; header=false))
-    Jaw_mat = Matrix(CSV.read(JawFeats_path, DataFrame; header=false))
+    # Jaw_mat = Matrix(CSV.read(JawFeats_path, DataFrame; header=false))
 
     # Chunk all matrices
     PCA_P1_chunks = chunk_matrix(PCA_P1_mat, chunk_size)
     KP_chunks = chunk_matrix(KP_mat, chunk_size)
-    Jaw_chunks = chunk_matrix(Jaw_mat, chunk_size)
+    # Jaw_chunks = chunk_matrix(Jaw_mat, chunk_size)
 
-    return PCA_P1_chunks, KP_chunks, Jaw_chunks
+    return PCA_P1_chunks, KP_chunks  #, Jaw_chunks
 end
 
 function load_data_encoder(path, condition)
@@ -1237,7 +1237,7 @@ function load_data_encoder_cut_noSVD(path, condition, probe_num)
     FCs_path = path * "FCs_" * condition * ".csv"
     LRCs_path = path * "LRCs_" * condition * ".csv"
     Tongue_path = path * "Tongue_" * condition * ".csv"
-    JawFeats_path = path * "JawFeats_" * condition * "_Cut.csv"
+    # JawFeats_path = path * "JawFeats_" * condition * "_Cut.csv"
 
 
     # Load the data into matrices
@@ -1246,7 +1246,7 @@ function load_data_encoder_cut_noSVD(path, condition, probe_num)
     FCs_mat = Matrix(CSV.read(FCs_path, DataFrame; header=false))
     LRCs = vec(Matrix(CSV.read(LRCs_path, DataFrame; header=false)))  # 1D vector of rounded trial lengths
     Tongue_mat = Matrix(CSV.read(Tongue_path, DataFrame; header=false))
-    Jaw_mat = Matrix(CSV.read(JawFeats_path, DataFrame; header=false))
+    # Jaw_mat = Matrix(CSV.read(JawFeats_path, DataFrame; header=false))
 
     # Chunking function
     function chunk_matrix(mat, lengths)
@@ -1263,10 +1263,10 @@ function load_data_encoder_cut_noSVD(path, condition, probe_num)
     # Chunk all data at SR Hz
     PCA_P1_chunks = chunk_matrix(PCA_P1_mat, LRCs)
     KP_chunks = chunk_matrix(KP_mat, LRCs)
-    Jaw_chunks = chunk_matrix(Jaw_mat, LRCs)
+    # Jaw_chunks = chunk_matrix(Jaw_mat, LRCs)
 
 
-    return PCA_P1_chunks, KP_chunks, FCs_mat, LRCs, Tongue_mat, Jaw_chunks
+    return PCA_P1_chunks, KP_chunks, FCs_mat, LRCs, Tongue_mat #, Jaw_chunks
 end
 
 function load_data_encoder_cut(path, condition)

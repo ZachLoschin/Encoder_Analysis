@@ -21,8 +21,8 @@ close all
 % base_dir = 'C:\Research\Encoder_Modeling\Encoder_Analysis\TD10sa';
 % alt_base_dir = 'C:\Research\Encoder_Modeling\Encoder_Analysis\Processed_Encoder\R14_2026';
 
-base_dir = 'C:\Research\Encoder_Modeling\Encoder_Analysis\TDsa11';
-alt_base_dir = 'C:\Research\Encoder_Modeling\Encoder_Analysis\Processed_Encoder\TDsa11';
+base_dir = 'C:\Research\Encoder_Modeling\Encoder_Analysis\TDsa12_ShankFiltered';
+alt_base_dir = 'C:\Research\Encoder_Modeling\Encoder_Analysis\Processed_Encoder\TDsa12';
 
 
 subfolder = '';
@@ -459,6 +459,85 @@ for ij = 1:length(session_dirs)
         csvwrite(fullfile(save_dir, "R1_dt.csv"), R1_disengage);
         csvwrite(fullfile(save_dir, "R4_dt.csv"), R4_disengage);        
 
+
+         % Initialize the figure
+        GCtime = 11;  % This is 11 because I am only saving 50ms before gc
+        R1_Tongue = R1_Tongue_norm';
+        R4_Tongue = R4_Tongue_norm';
+        R1_States = R1_States';
+        R4_States = R4_States';
+        figure;
+        hold on;
+% Plotting parameters
+        lw = 0.75;  % Line width
+        px = 75; py = 75;
+        width = 700; height = 800;
+        set(gcf, 'Position', [px, py, width, height]);
+% Define colors for the conditions
+        R4_color = 'k'; % Black for R4
+        R1_color = 'k'; % Black for R1
+        [trs, timepoints] = size(All_States);
+% Overlay heatmap
+        h = imagesc(1:size(All_States, 2), 1:size(All_States, 1), All_States);
+% Plotting line plots
+        for j = 1:size(R4_Tongue, 2)
+            plot(1:length(R4_Tongue(:, j)), j-1 + R4_Tongue(:, j), R4_color, 'LineWidth', lw);
+        end
+        for j = 1:size(R1_Tongue, 2)
+            plot(1:length(R1_Tongue(:, j)), j-1 + size(R4_Tongue, 2) + R1_Tongue(:, j), R1_color, 'LineWidth', lw);
+        end
+
+% Overlay disengagement time dots
+        dt_fs = 0.005;  % 200 Hz sampling interval
+        nR4 = size(R4_Tongue, 2);
+        nR1 = size(R1_Tongue, 2);
+
+        R4_disengage_x = GCtime + R4_disengage / dt_fs;
+        R1_disengage_x = GCtime + R1_disengage / dt_fs;
+
+        for j = 1:nR4
+            if ~isnan(R4_disengage_x(j))
+                scatter(R4_disengage_x(j), j - 0.5, 20, 'w', 'filled', 'MarkerEdgeColor', 'none');
+            end
+        end
+        for j = 1:nR1
+            if ~isnan(R1_disengage_x(j))
+                scatter(R1_disengage_x(j), nR4 + j - 0.5, 20, 'w', 'filled', 'MarkerEdgeColor', 'none');
+            end
+        end
+
+% Adjust the colormap to suit your data range
+        colormap(custom_cmap);
+% Add a colorbar
+        cc = colorbar;
+% Add a horizontal line to separate the conditions
+        yline(size(R4_Tongue, 2), 'k-', 'LineWidth', 3);
+% Add labels or annotations
+        text(-30, size(R4_Tongue, 2) + 2, 'R1', 'FontSize', 12, 'Color', "k");
+        text(-30, size(R4_Tongue, 2) - 2, 'R4', 'FontSize', 12, 'Color', "k");
+% Set axes limits and labels
+        set(gca, 'YTick', 0:10:trs);
+        xlabel('Time (s)');
+        ylabel('Trial Number');
+        xticks([0 60 110 160 210 260 310 360 410]);
+        xticklabels({'-0.05', '0.25', '0.5', '0.75', '1.0', '1.25', '1.5', '1.75', '2.0'});
+        nTrials = size(All_States, 1);
+        ylim([0 nTrials]);
+        box off;
+        axis tight;
+        set(gca, 'TickLength', [0 0]);
+        hold off;
+        title("Single Trial State Estimates: R1 and R4");
+        xline(GCtime, '--k', 'LineWidth', 1);
+        text(GCtime, -5, 'GC', ...
+            'HorizontalAlignment', 'center', ...
+            'VerticalAlignment', 'bottom', ...
+            'FontSize', 12, ...
+            'Color', 'k');
+        saveas(gcf, fullfile(save_dir, 'Inference_Heatmap_DT.png'));
+        saveas(gcf, fullfile(save_dir, 'Inference_Heatmap_DT.fig'));
+
+
         % %% --- Single‐trial heatmap aligned to first contact (FC) + tongue overlay ---
         % % window_size = 171;    % pre_points + post_points + 1
         % % pre_points   = 20;
@@ -519,6 +598,15 @@ for ij = 1:length(session_dirs)
         %     R4_tongue_FC(ws:we, i) = R4_Tongue(vs:ve, i);
         % end
         % 
+        % % Convert disengagement times (seconds) back to x-coordinates in the FC-aligned window
+        % % disengage times are relative to sample 10 of the original States array,
+        % % but States are FC-aligned, so x = pre_points + 1 + t_sec/0.005
+        % dt_fs = 0.005;  % 200 Hz
+        % 
+        % R4_disengage_x = pre_points + 1 + R4_disengage / dt_fs;
+        % R1_disengage_x = pre_points + 1 + R1_disengage / dt_fs;
+        % 
+        % 
         % % combine and exponentiate states
         % All_states_FC = exp([ R4_states_FC.' ; R1_states_FC.' ]);
         % 
@@ -547,6 +635,23 @@ for ij = 1:length(session_dirs)
         % % Overlay R1 tongue traces (offset by number of R4 trials)
         % for j = 1:size(R1_tongue_FC,2)
         %     plot(1:window_size, (j-1 + size(R4_tongue_FC,2)) + R1_tongue_FC(:,j), R1_color, 'LineWidth', lw);
+        % end
+        % 
+        % 
+        % % Overlay dots for R4 trials (rows 1:nR4 in the combined matrix)
+        % for j = 1:nR4
+        %     if ~isnan(R4_disengage_x(j))
+        %         scatter(R4_disengage_x(j), j - 0.5, 20, 'w', 'filled', ...
+        %             'MarkerEdgeColor', 'none');
+        %     end
+        % end
+        % 
+        % % Overlay dots for R1 trials (rows nR4+1 : end)
+        % for j = 1:nR1
+        %     if ~isnan(R1_disengage_x(j))
+        %         scatter(R1_disengage_x(j), nR4 + j - 0.5, 20, 'w', 'filled', ...
+        %             'MarkerEdgeColor', 'none');
+        %     end
         % end
         % 
         % % Apply custom colormap
